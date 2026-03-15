@@ -1,0 +1,80 @@
+Chapter 3: Distributed System Theorems and  Data Structures
+
+ 
+Part 1: Foundational Theorems
+CAP Theorem (Consistency, Availability, Partition Tolerance)
+
+PACELC Theorem (Extension of CAP for normal operations)
+
+FLP Theorem (Impossibility of consensus)
+
+ACID Properties (Database transaction guarantees)
+
+Part 2: Consensus Algorithms (Building on FLP)
+Paxos (Classic consensus)
+
+Raft (More understandable consensus)
+
+Part 3: Distributed Coordination
+Gossip Protocol (Epidemic communication)
+
+Write-Ahead Log (WAL) with watermarks
+
+Part 4: Data Structures for Distributed Systems
+Consistent Hashing (Load distribution)
+
+Bloom Filter (Probabilistic membership)
+
+HyperLogLog (HLL) (Cardinality estimation)
+
+Count-Min Sketch (Frequency estimation)
+
+Checksums (Data integrity)
+
+
+
+3.1 Fundamental Theorems
+
+3.1.1 CAP Theorem
+
+3.1.2 PACELC Theorem
+
+3.1.3 FLP Theorem
+
+3.1.4 ACID vs BASE
+
+3.2 Consensus Algorithms
+
+3.2.1 Paxos
+
+3.2.2 Raft
+
+3.2.3 Byzantine Fault Tolerance (BFT)
+
+3.3 Distributed Coordination
+
+3.3.1 Gossip Protocols
+
+3.3.2 Write-Ahead Logs (WAL)
+
+3.3.3 Logical Clocks (Lamport, Vector)
+
+3.4 Distributed Data Structures
+
+3.4.1 Consistent Hashing
+
+3.4.2 Bloom Filters
+
+3.4.3 HyperLogLog
+
+3.4.4 Count-Min Sketch
+
+3.4.5 Checksums & CRCs
+
+3.4.6 Quorum Systems
+
+3.5 Distributed Transactions
+
+3.5.1 Two-Phase Commit (2PC)
+
+3.5.2 Three-Phase Commit (3PC)

@@ -1,0 +1,35 @@
+Chapter 2: Attributes of Distributed Systems
+
+ 
+So, we understand the what and the why of system design. We know we're focusing on High-Level Design for distributed systems.
+
+But this raises a critical question: What makes a distributed system good? What are the actual goals we are designing for?
+
+In a single, simple application, success might be 'it works.' But in a distributed world, 'working' isn't enough. The system must work when millions of users hit it at once. It must work when a critical server catches fire. It must work for a user halfway across the globe. And it must continue to work as our team constantly changes and improves it.
+
+These aren't nice-to-haves. They are the non-functional requirements that become our primary design drivers. They are the qualities we measure, argue about, and optimize for in every architecture meeting.
+
+To design effectively, we need a shared vocabulary for these qualities. We need to define what we mean by a system that is robust, fast, and future-proof.
+
+This brings us to the core Attributes of Distributed Systems. Think of these not as a checklist, but as a framework for thought—a set of interconnected, and sometimes competing, goals that will guide every single decision we make from here on out.
+
+We Will understand how these distributed system attributes come into a play when we  think about designing a distributed system. we may need to make appropriate trade-off among these attributes to satisfy the system requirements.
+
+In this chapter, we will build this vocabulary by covering the following foundational concepts:
+
+1. Communication (The fundamental challenge: how components talk)
+
+2. Consistency (Everyone sees the same data at the same time)
+
+3. Availability (Can you get a response, even if it's stale?)
+
+4. Reliability (Does the system behave correctly over time?)
+
+5. Fault Tolerance (How it achieves reliability despite failures)
+
+6. Scalability (How it handles increased load)
+
+7. Durability (The guarantee that your data must persist and not be lost)
+
+8. Maintainability (How we manage the system's evolution)
+

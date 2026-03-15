@@ -1,0 +1,44 @@
+Chapter 1: Basic Of System Design
+
+Today, the world's most impactful applications—from global social networks and streaming services to the financial platforms we rely on—are not built on single machines. They are distributed systems.
+
+This reality creates a fundamental shift. Building software is no longer just about writing correct code. It's about architecting for scale, designing for failure, and engineering for uncertainty.
+'Mastering Distributed System Design' is not about memorizing tools or trends. It's about internalizing the timeless principles that allow you to design systems that are resilient under load, available across the globe, and adaptable for tomorrow's demands.
+
+You will learn the language of system architects: scalability, reliability, consistency, and latency. You will learn to think in flows, components, and trade-offs.
+
+
+1.1 What is System Design
+
+System design is the process of defining the architecture, components, modules, data flows, and interfaces of a software system to meet specific functional and non-functional requirements. 
+
+It is the blueprint that determines how a system will work, how its parts interact, and how it will handle scale, reliability, and performance challenges.
+
+It’s a generic system design that includes the system architecture, database design, and a brief description of systems, services, platforms, and relationships among modules. It involves making high-level decisions about scalability, reliability, performance, and maintainability.
+ 
+System design at its core is the process of defining how a system should be structured, which includes its overall architecture, what all components should be there, how many modules should be there in the system, how the interfaces should look like, how the data should flow between the modules and components to meet any specific requirement.
+ 
+But system design isn't just about drawing the diagrams on a whiteboard or on a document. It is more about critically thinking and designing the high-level architecture, taking those high-level decisions that impact not just the functional, but also the non-functional requirements of an application. Non-functional requirements like scalability, reliability, performance and maintainability of a system.
+ 
+Think about the applications that we use every day. Are these applications scalable? I think so most of the applications that we use are scalable. They are distributed. They probably have huge databases. They are running on some cloud infrastructure and behind each of these applications, there is a well thought out system design that somebody must have done before creating the application, and probably somebody is still thinking about system design to tackle the new scalability, performance and caching related issues. A good system design ensures that your system runs efficiently, it handles massive loads and it automatically recovers from failures smoothly.
+
+
+1.2 Why System Design is Important
+
+Now let's talk about why system design is important. It's actually a very critical skill for building scalable, reliable, and efficient software systems. So, let's look at some of the key reasons why the system design actually matters.
+ The first reason is that it will help you in building scalable and reliable systems. Think about modern applications we are using daily. These platforms handle millions, even billions of users without any problem. A good system design is crucial for such systems. Without a good design, they will crash under heavy load. A well-designed system ensures high availability, fault tolerance, and performance optimizations so that the applications can scale seamlessly. Learning about system design gives you the ammunition to create such scalable applications.
+
+ The second is architectural thinking. When you study system design, you are actually going beyond coding. You are thinking at an architectural level. I mean, don't get me wrong, writing efficient code is important, but real-world engineering problems go beyond just writing code. System design helps engineers think at an architectural level. It allows you to make trade-offs like choosing between SQL or NoSQL microservices or monolith, or balancing between consistency or availability. And understanding these concepts will make you a better engineer.
+
+ System design is about solving real world engineering challenges. When you truly understand what system design is, why systems are designed in a certain way, then only you will be able to design good systems. Engineers must learn to balance scalability, cost, speed and complexity to achieve their functional and non-functional requirements. At that point of time, for example, choosing a SQL or NoSQL, it isn't about a personal preference. It depends on the functional and non-functional requirements of the application. So informed trade-offs is one of the things that system design learning system design will help you in.
+
+And finally, future proofing the systems. We know that the technology is constantly evolving. Poorly designed systems become bottlenecks over time. A well-designed system, on the other hand, can adapt to growing traffic, new features and emerging technologies. Companies like Netflix and eBay started with monolithic architecture, but later transition to microservices as they scaled by learning system design as a skill, not just as a checklist.
+
+
+1.3 Type of system Design
+Now, system design isn't one monolithic activity. It's typically broken down into two primary types, which correspond to two different levels of abstraction and planning.
+
+First, we have High-Level System Design, or HLD. Think of this as the architectural blueprint or the 30,000-foot view. This is where we map out the major components of our system—how will our web servers talk to our databases? Where will we place our caches? How do services communicate? HLD is about the big picture: technology choices, data flow, and system architecture. It's like planning the entire city—identifying where the residential zones, power grids, and highways go.
+
+Second, Low-Level System Design, or LLD. This is the detailed engineering plan. If HLD is the city map, LLD is the blueprint for a specific building. Here, we focus on the how: detailed class diagrams, specific data structures, algorithms, database schemas, and the exact APIs for components. It’s about turning the architectural vision into an implementable specification.
+To be clear, both are crucial, but they serve different purposes in the development lifecycle. And for the focus of this book and this course, we will be concentrating primarily on High-Level System Design—the skills needed to architect scalable and reliable distributed systems.

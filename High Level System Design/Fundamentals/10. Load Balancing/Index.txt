@@ -1,0 +1,13 @@
+Chapter 4: Communication Networks & Protocols
+
+Communication Models: OSI, TCP/IP models (the layered approach)
+
+Networking Basics: IP addresses, ports, routing
+
+Transport Protocols: TCP vs UDP (reliable vs fast)
+
+Communication Patterns: Push vs Pull, synchronous vs asynchronous
+
+Application Protocols: REST, RPC, GraphQL, WebSockets
+
+Real-time Communication: WebRTC, server-sent events, long polling
