@@ -7,8 +7,6 @@ public class ListNode
     public int val;
     public ListNode? next;
 }
-
-
 public class TreeNode
 {
     public int val;
@@ -20,6 +18,7 @@ public class TreeNode
         val = value;
     }
 }
+
 public class Solution
 {
     private static string[] unitsMap = { "Zero", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen" };
@@ -305,7 +304,7 @@ public class Solution
 
         return result;
     }
-    public static List<int> GenerateGrayCodes(int n)
+    public List<int> GenerateGrayCodes(int n)
     {
         // Each entry differs from the previous by one bit
         int size = 1 << n; // 2^n codes
@@ -883,7 +882,7 @@ public class Solution
         }
         return invertedImage;
     }
-    public static bool SearchSortedMatrix(int[][] matrix, int target)
+    public bool SearchSortedMatrix(int[][] matrix, int target)
     {
         int m = matrix.Length;        // rows
         int n = matrix[0].Length;      // columns
@@ -954,7 +953,7 @@ public class Solution
         result[1] = right; // Last occurrence
         return result;
     }
-    public static int FindMinRotatedSortedArray(int[] nums)
+    public int FindMinRotatedSortedArray(int[] nums)
     {
         int start = 0;
         int end = nums.Length - 1;
@@ -976,6 +975,30 @@ public class Solution
         }
 
         return nums[start];
+    }
+    public int FindMinCyclicallySortedArray(int[] nums)
+    {
+        int left = 0;
+        int right = nums.Length - 1;
+
+        while (left < right)
+        {
+            int mid = left + (right - left) / 2;
+            if (nums[mid] > nums[right])
+            {
+                // minimum number be in right side.
+
+                left = mid + 1;
+
+            }
+            else
+            {
+                // minimum number may be right or mid -1.
+                right = mid;
+            }
+
+        }
+        return nums[left];
     }
     public int SearchRotatedSortedArray(int[] nums, int target)
     {
