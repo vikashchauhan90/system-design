@@ -24,7 +24,6 @@ public class Solution
 {
     private static string[] unitsMap = { "Zero", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen" };
     private static string[] tensMap = { "Zero", "Ten", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety" };
-
     public int Parity(int x)
     {
         int result = 0;
@@ -35,7 +34,6 @@ public class Solution
         }
         return result; // 0 = even parity, 1 = odd parity
     }
-
     public void Swap(ref int a, ref int b)
     {
         // a = 5, b = 9
@@ -43,7 +41,6 @@ public class Solution
         b ^= a; // 12 ^ 9 = 5
         a ^= b; // 12 ^ 5 = 9
     }
-
     public int Factorial(int number)
     {
         if (number < 0)
@@ -307,6 +304,20 @@ public class Solution
         }
 
         return result;
+    }
+    public static List<int> GenerateGrayCodes(int n)
+    {
+        // Each entry differs from the previous by one bit
+        int size = 1 << n; // 2^n codes
+        List<int> grayCodes = new List<int>();
+
+        for (int i = 0; i < size; i++)
+        {
+            int gray = i ^ (i >> 1); // Gray code formula
+            grayCodes.Add(gray);
+        }
+
+        return grayCodes;
     }
     public long ClosestNumberWithSameBitCount(long number)
     {
