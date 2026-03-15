@@ -25,6 +25,25 @@ public class Solution
     private static string[] unitsMap = { "Zero", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen" };
     private static string[] tensMap = { "Zero", "Ten", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety" };
 
+    public int Parity(int x)
+    {
+        int result = 0;
+        while (x > 0)
+        {
+            result ^= (x & 1); // XOR with least significant bit
+            x >>= 1;           // shift right
+        }
+        return result; // 0 = even parity, 1 = odd parity
+    }
+
+    public void Swap(ref int a, ref int b)
+    {
+        // a = 5, b = 9
+        a ^= b; // 5^9 = 12
+        b ^= a; // 12 ^ 9 = 5
+        a ^= b; // 12 ^ 5 = 9
+    }
+
     public int Factorial(int number)
     {
         if (number < 0)
@@ -39,7 +58,6 @@ public class Solution
         }
         return result; // Return the factorial of the number
     }
-
     public int Fibonacci(int number)
     {
         if (number <= 0)
@@ -58,7 +76,6 @@ public class Solution
         }
         return b; // Return the nth Fibonacci number
     }
-
     public int CountBits(int number)
     {
         int count = 0;
@@ -69,7 +86,6 @@ public class Solution
         }
         return count;
     }
-
     public int CountDigits(int number)
     {
         if (number == 0)
@@ -87,7 +103,6 @@ public class Solution
 
         return count;
     }
-
     public int SumOfDigits(int number)
     {
         int num = Math.Abs(number);
@@ -99,7 +114,6 @@ public class Solution
         }
         return sum;
     }
-
     public double GeometricSum(int number)
     {
         double factor = 1.0;
@@ -111,7 +125,6 @@ public class Solution
         }
         return sum;
     }
-
     public int AddNumbers(int a, int b)
     {
         while (b != 0)
@@ -122,7 +135,6 @@ public class Solution
         }
         return a;
     }
-
     public int ModNumbers(int a, int b)
     {
         if (b == 0)
@@ -132,7 +144,6 @@ public class Solution
 
         return a - remainder * b; // Return the remainder of a divided by b
     }
-
     public int Divide(int dividend, int divisor)
     {
         // Handle edge case: overflow when dividend is int.MinValue and divisor is -1
@@ -169,7 +180,6 @@ public class Solution
 
         return (int)quotient;
     }
-
     public int SingleNumber(int[] nums)
     {
         int diff = 0;
@@ -179,7 +189,6 @@ public class Solution
         }
         return diff;
     }
-
     public int MissingNumber(int[] nums)
     {
         int diff = 0;
@@ -197,7 +206,6 @@ public class Solution
         return diff;
 
     }
-
     public int Power(int number, int power)
     {
         long exponent = power;
@@ -229,7 +237,41 @@ public class Solution
 
         return (int)result;
     }
+    public int Sqrt(int number)
+    {
+        bool isNagative = number < 0;
+        int positiveNumber = Math.Abs(number);
+        if (positiveNumber < 2)
+        {
+            return number;
+        }
 
+        int left = 1;
+        int right = positiveNumber / 2;
+
+        while (left < right)
+        {
+            int mid = left + (right - left) / 2;
+
+            long square = (long)mid * (long)mid; // avoid overflow
+
+            if (square == positiveNumber)
+            {
+                return isNagative ? -mid : mid;
+            }
+            if (square < positiveNumber)
+            {
+                left = mid + 1;
+
+            }
+            else
+            {
+                right = mid - 1;
+            }
+        }
+
+        return isNagative ? -right : right;
+    }
     public string ToHex(int number)
     {
         if (number == 0)
@@ -248,7 +290,6 @@ public class Solution
 
         return hexBuilder.ToString();
     }
-
     public int ReverseBits(int n)
     {
         int result = 0;
@@ -267,7 +308,21 @@ public class Solution
 
         return result;
     }
+    public long ClosestNumberWithSameBitCount(long number)
+    {
+        int maxLength = 64;  // long is 64 bit number
+        // Iterate through each bit position from 0 to 62 (since we check pairs of bits)
+        for (int i = 0; i < maxLength - 1; ++i)
+        {
+            if (((number >> i) & 1) != ((number >> (i + 1)) & 1))
+            {
+                number ^= (1L << i) | (1L << (i + 1)); // swap bits
+                return number;
+            }
+        }
 
+        return -1;
+    }
     public int MinChanges(int number, int k)
     {
         if ((number & k) != k)
@@ -286,7 +341,6 @@ public class Solution
         }
         return changes;
     }
-
     public int MinimumFlips(int number)
     {
         string binaryString = Convert.ToString(number, 2); // Convert the number to its binary representation
@@ -300,7 +354,6 @@ public class Solution
         }
         return flips;
     }
-
     public char RepeatedCharacter(string s)
     {
         int see = 0;
@@ -316,7 +369,6 @@ public class Solution
         }
         return '\0'; // Return null character if no repeated character is found
     }
-
     public string DuplicateCharacters(string s)
     {
         char[] charCount = new char[256];
@@ -336,7 +388,6 @@ public class Solution
 
         return result.ToString();
     }
-
     public string RemoveDuplicates(string s)
     {
 
@@ -352,7 +403,6 @@ public class Solution
         }
         return result.ToString();
     }
-
     public string RemoveAdjacentDuplicates(string s)
     {
         StringBuilder result = new StringBuilder();
@@ -396,7 +446,6 @@ public class Solution
         }
         return sign * result; // Apply the sign to the result and return
     }
-
     public int TitleToNumber(string columnTitle)
     {
         int result = 0;
@@ -413,7 +462,6 @@ public class Solution
 
         return result;
     }
-
     public int LengthOfLastWord(string s)
     {
         int length = 0;
@@ -431,7 +479,6 @@ public class Solution
 
         return length;
     }
-
     public int RomanToInt(string s)
     {
         Dictionary<char, int> romanValues = new()
@@ -461,7 +508,6 @@ public class Solution
 
         return result;
     }
-
     public string Multiply(string num1, string num2)
     {
         // Both strings are not null and contains only positive numbers.
@@ -513,7 +559,6 @@ public class Solution
 
         return output.Length > 0 ? output.ToString() : "0";
     }
-
     public string LongestCommonPrefix(string[] strs)
     {
         if (strs.Length == 0)
@@ -536,7 +581,6 @@ public class Solution
 
         return smallStr;
     }
-
     public int LengthOfLongestSubstring(string s)
     {
         HashSet<char> seen = new();
@@ -554,7 +598,6 @@ public class Solution
         }
         return maxLength;
     }
-
     public string ValidateIPv4(string ip)
     {
         var parts = ip.Split('.');
@@ -570,7 +613,6 @@ public class Solution
         }
         return "IPv4";
     }
-
     public string ValidateIPv6(string ip)
     {
         var parts = ip.Split(':');
@@ -589,7 +631,6 @@ public class Solution
         }
         return "IPv6";
     }
-
     public string CompressString(string str)
     {
 
@@ -618,7 +659,6 @@ public class Solution
         string compressedString = compressed.ToString();
         return compressedString.Length < str.Length ? compressedString : str;
     }
-
     public string DecompressString(string compressed)
     {
         if (string.IsNullOrEmpty(compressed))
@@ -634,7 +674,6 @@ public class Solution
         }
         return decompressed.ToString();
     }
-
     public void MoveZeroes(int[] nums)
     {
         int lastNonZeroIndex = 0;
@@ -651,7 +690,6 @@ public class Solution
             nums[i] = 0;
         }
     }
-
     public bool IsValidParentheses(string s)
     {
 
@@ -691,7 +729,6 @@ public class Solution
 
         return braces.Count == 0;
     }
-
     public int EvalRPN(string[] tokens)
     {
         var stack = new Stack<int>();
@@ -723,7 +760,31 @@ public class Solution
         return stack.Pop();
 
     }
+    public int DeleteSortedArrayDuplicates(int[] nums)
+    {
+        if (nums.Length <= 1)
+        {
+            return nums.Length;
+        }
 
+        int writeIndex = 1;
+        for (int i = 1; i < nums.Length; i++)
+        {
+            if (nums[i - 1] != nums[i])
+            {
+                nums[writeIndex++] = nums[i];
+            }
+
+        }
+
+        // set remaing number zero
+        for (int i = writeIndex; i < nums.Length; i++)
+        {
+            nums[i] = 0; // set zero
+        }
+
+        return writeIndex;
+    }
     public int MajorityElement(int[] arrs)
     {
         // Moore's algorithm
@@ -750,7 +811,6 @@ public class Solution
         }
         return candidate;
     }
-
     public int[] MergeSortedArrays(int[] num1, int[] num2)
     {
         int m = num1.Length;
@@ -780,7 +840,6 @@ public class Solution
         }
         return mergedArray;
     }
-
     public int MaxSubArray(int[] nums)
     {
         int currentSum = 0;
@@ -798,7 +857,6 @@ public class Solution
         return maxSum;
 
     }
-
     public int[][] InvertImage(int[][] image)
     {
         int rows = image.Length;
@@ -814,7 +872,6 @@ public class Solution
         }
         return invertedImage;
     }
-
     public static bool SearchSortedMatrix(int[][] matrix, int target)
     {
         int m = matrix.Length;        // rows
@@ -845,7 +902,6 @@ public class Solution
 
         return false;
     }
-
     public List<int> FindFirstAndLastPositionOfAnElement(int[] sortedArray, int target)
     {
         var result = new List<int> { -1, -1 };
@@ -887,7 +943,6 @@ public class Solution
         result[1] = right; // Last occurrence
         return result;
     }
-
     public static int FindMinRotatedSortedArray(int[] nums)
     {
         int start = 0;
@@ -949,7 +1004,6 @@ public class Solution
         }
         return -1;
     }
-
     public int FindKthLargest(int[] nums, int k)
     {
         PriorityQueue<int, int> minHeap = new PriorityQueue<int, int>();
@@ -966,7 +1020,6 @@ public class Solution
 
         return minHeap.Peek();
     }
-
     public List<int> UniqueIntersection(int[] arr1, int[] arr2)
     {
         int i = 0, j = 0;
@@ -995,7 +1048,6 @@ public class Solution
 
         return result;
     }
-
     public ListNode? ReverseLinkedList(ListNode head)
     {
         ListNode? prev = null;
@@ -1009,7 +1061,6 @@ public class Solution
         }
         return prev; // At the end, prev will be the new head of the reversed list
     }
-
     public bool HasCycle(ListNode head)
     {
         if (head == null) return false;
@@ -1026,7 +1077,6 @@ public class Solution
         }
         return false; // No cycle found
     }
-
     public ListNode? MergeTwoSortedLists(ListNode? l1, ListNode? l2)
     {
         ListNode dummy = new ListNode(); // Dummy node to simplify edge cases
@@ -1056,7 +1106,6 @@ public class Solution
         }
         return dummy.next; // Return the head of the merged list (skipping the dummy node)
     }
-
     public ListNode? RemoveNthFromEnd(ListNode head, int n)
     {
         ListNode dummy = new ListNode { next = head }; // Dummy node to handle edge cases
@@ -1077,7 +1126,6 @@ public class Solution
         second.next = second.next?.next; // Skip the nth node from the end
         return dummy.next; // Return the head of the modified list
     }
-
     public ListNode? GetIntersectionNode(ListNode? headA, ListNode? headB)
     {
         if (headA == null || headB == null) return null;
@@ -1090,7 +1138,6 @@ public class Solution
         }
         return pointerA; // This will be the intersection node or null if there is no intersection
     }
-
     public ListNode? FindMiddle(ListNode head)
     {
         ListNode? slow = head;
@@ -1104,8 +1151,6 @@ public class Solution
 
         return slow;
     }
-
-
     public string ConvertNumberToText(int number)
     {
         if (number == 0)
@@ -1125,7 +1170,6 @@ public class Solution
 
         return ConvertNumberToText(number / 100000) + " Lac" + ((number % 100000 > 0) ? " " + ConvertNumberToText(number % 100000) : "");
     }
-
     public List<object> FlattenList(IEnumerable<object> nestedList)
     {
         List<object> result = new List<object>();
@@ -1144,7 +1188,6 @@ public class Solution
 
         return result;
     }
-
     public int TowerOfHanoi(int n)
     {
         // Base case
@@ -1157,7 +1200,6 @@ public class Solution
         //Inductive Step
         return 2 * smallResult + 1;
     }
-
     public void PrintAllSubsequence(string input, string output)
     {
         // Base case
@@ -1176,7 +1218,6 @@ public class Solution
         // Exclude the first character
         PrintAllSubsequence(restOfString, output);
     }
-
     public void PrintTowerOfHanoiMoves(int n, char source, char destination, char auxiliary)
     {
         // Base case
@@ -1192,7 +1233,6 @@ public class Solution
         // Move n-1 disks from auxiliary to destination
         PrintTowerOfHanoiMoves(n - 1, auxiliary, destination, source);
     }
-
     public int Rob(int[] nums, int n)
     {
         if (n < 0)
@@ -1203,7 +1243,6 @@ public class Solution
         int excludeCurrent = Rob(nums, n - 1); // Exclude the current house and consider the next one
         return Math.Max(includeCurrent, excludeCurrent);
     }
-
     public int ClimbStairs(int n)
     {
         // Base case
@@ -1223,7 +1262,6 @@ public class Solution
         //Inductive Step
         return waysFromNMinus1 + waysFromNMinus2;
     }
-
     public bool CanJump(int[] nums)
     {
         int maxReachable = 0;
@@ -1237,7 +1275,6 @@ public class Solution
         }
         return true; // If we can reach or exceed the last index, return true
     }
-
     public int MaxProfit(int[] prices)
     {
         int minPrice = int.MaxValue;
@@ -1255,7 +1292,6 @@ public class Solution
         }
         return maxProfit;
     }
-
     public int MaxArea(int[] height)
     {
         int left = 0;
@@ -1277,9 +1313,6 @@ public class Solution
         }
         return maxArea;
     }
-
-
-
     public int TrapWater(int[] height)
     {
         if (height.Length == 0) return 0;
@@ -1308,7 +1341,6 @@ public class Solution
 
         return water;
     }
-
     public int OrangesRotting(int[][] grid)
     {
         int rows = grid.Length;
@@ -1393,7 +1425,6 @@ public class Solution
         }
         return true; // If we can complete the circuit, return true
     }
-
     public int[] SortKSortedArray(int[] arr, int k)
     {
         int n = arr.Length;
@@ -1422,8 +1453,6 @@ public class Solution
 
         return arr;
     }
-
-
     public List<int> InorderTraversal(TreeNode root)
     {
         Stack<TreeNode> stack = new Stack<TreeNode>();
@@ -1442,7 +1471,6 @@ public class Solution
         }
         return result;
     }
-
     public List<int> PreorderTraversal(TreeNode root)
     {
         Stack<TreeNode> stack = new Stack<TreeNode>();
@@ -1466,7 +1494,6 @@ public class Solution
         }
         return result;
     }
-
     public List<int> PostorderTraversal(TreeNode root)
     {
         Stack<TreeNode> stack = new Stack<TreeNode>();
@@ -1496,7 +1523,6 @@ public class Solution
         }
         return result;
     }
-
     public int MaxDepth(TreeNode root)
     {
         if (root == null)
@@ -1507,7 +1533,6 @@ public class Solution
         int rightDepth = MaxDepth(root.right); // Recursive call to find the depth of the right subtree
         return Math.Max(leftDepth, rightDepth) + 1; // Return the maximum of left and right depths plus one for the current node
     }
-
     public List<int> FindKLargest(TreeNode root, int k)
     {
         Stack<TreeNode> stack = new Stack<TreeNode>();
