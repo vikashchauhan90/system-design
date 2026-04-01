@@ -1,5 +1,6 @@
-﻿namespace LLD.App;
+# MergeSort
 
+```C#
 public class MergeSort
 {
 
@@ -42,3 +43,4 @@ public class MergeSort
         }
     }
 }
+```

@@ -1,5 +1,6 @@
-﻿namespace LLD.App;
+# QuickSort
 
+```C#
 public class QuickSort
 {
 
@@ -43,3 +44,4 @@ public class QuickSort
         arr[j] = temp;
     }
 }
+```

@@ -5,93 +5,132 @@ Heap sort is a sorting algorithm that works by first organizing the data to be s
 First transforms the input array into a max heap. Then, it repeatedly swaps the first element (the maximum) with the last element of the heap, reduces the size of the heap by one, and heapifies the root element. This process continues until the heap is empty, resulting in a sorted array in ascending order.
 
 ```C#
+using System;
+
 public class HeapSort
 {
-    //Time complexity:It takes O(logn) for heapify and O(n) for constructing a heap. Hence, the overall time complexity of heap sort using min heap or max heap is O(n log n)
-    //Space complexity: O(n) for call stack
-    //Auxiliary Space complexity: O(1)  for swap two items
-
-    public void Accending(int[] nums)
+    /// <summary>
+    /// Sorts array in ascending order using Max Heap
+    /// Time Complexity: O(n log n) - Building heap O(n) + n heapify operations O(log n) each
+    /// Space Complexity: O(1) - In-place sorting, iterative approach avoids recursion stack
+    /// </summary>
+    public void SortAscending(int[] array)
     {
-        int N = nums.Length;
-        for (int i = N / 2 - 1; i >= 0; i--)
+        if (array == null || array.Length <= 1)
+            return;
+
+        int n = array.Length;
+
+        // Step 1: Build max heap
+        // Start from last non-leaf node and heapify each node
+        for (int i = n / 2 - 1; i >= 0; i--)
         {
-            MaxHeap(nums, N, i);
+            Heapify(array, n, i);
         }
 
-        for (int j = N - 1; j >= 0; j--)
+        // Step 2: Extract elements from heap one by one
+        for (int i = n - 1; i > 0; i--)
         {
-            int temp = nums[0];
-            nums[0] = nums[j];
-            nums[j] = temp;
-            MaxHeap(nums, j, 0);
-        }
-    }
-    public void Decreasing(int[] nums)
-    {
-        int N = nums.Length;
-        for (int i = N / 2 - 1; i >= 0; i--)
-        {
-            MinHeap(nums, N, i);
-        }
-
-        for (int j = N - 1; j >= 0; j--)
-        {
-            int temp = nums[0];
-            nums[0] = nums[j];
-            nums[j] = temp;
-            MinHeap(nums, j, 0);
+            // Move current root (largest) to end
+            Swap(array, 0, i);
+            
+            // Call heapify on reduced heap
+            Heapify(array, i, 0);
         }
     }
 
-    private void MaxHeap(int[] nums, int N, int index)
+    /// <summary>
+    /// Sorts array in descending order using Min Heap
+    /// Time Complexity: O(n log n)
+    /// Space Complexity: O(1)
+    /// </summary>
+    public void SortDescending(int[] array)
     {
-        int largest = index;
-        int left = 2 * index + 1;
-        int right = 2 * index + 2;
+        if (array == null || array.Length <= 1)
+            return;
 
-        if (left < N && nums[left] > nums[largest])
+        int n = array.Length;
+
+        // Build min heap
+        for (int i = n / 2 - 1; i >= 0; i--)
         {
-            largest = left;
-        }
-        if (right < N && nums[right] > nums[largest])
-        {
-            largest = right;
+            HeapifyMin(array, n, i);
         }
 
-        if (largest != index)
+        // Extract elements
+        for (int i = n - 1; i > 0; i--)
         {
-            int temp = nums[index];
-            nums[index] = nums[largest];
-            nums[largest] = temp;
-
-            MaxHeap(nums, N, largest);
+            Swap(array, 0, i);
+            HeapifyMin(array, i, 0);
         }
     }
 
-    private void MinHeap(int[] nums, int N, int index)
+    /// <summary>
+    /// Iterative heapify for max heap - avoids recursion stack overhead
+    /// </summary>
+    private void Heapify(int[] array, int heapSize, int rootIndex)
     {
-        int smallest = index;
-        int left = 2 * index + 1;
-        int right = 2 * index + 2;
-
-        if (left < N && nums[left] < nums[smallest])
+        while (true)
         {
-            smallest = left;
-        }
-        if (right < N && nums[right] < nums[smallest])
-        {
-            smallest = right;
-        }
+            int largest = rootIndex;
+            int leftChild = 2 * rootIndex + 1;
+            int rightChild = 2 * rootIndex + 2;
 
-        if (smallest != index)
-        {
-            int temp = nums[index];
-            nums[index] = nums[smallest];
-            nums[smallest] = temp;
+            // Find largest among root, left child, and right child
+            if (leftChild < heapSize && array[leftChild] > array[largest])
+                largest = leftChild;
 
-            MinHeap(nums, N, smallest);
+            if (rightChild < heapSize && array[rightChild] > array[largest])
+                largest = rightChild;
+
+            // If root is largest, heap property satisfied
+            if (largest == rootIndex)
+                break;
+
+            // Swap root with largest child
+            Swap(array, rootIndex, largest);
+            
+            // Continue heapifying at the affected child
+            rootIndex = largest;
         }
     }
-}
+
+    /// <summary>
+    /// Iterative heapify for min heap
+    /// </summary>
+    private void HeapifyMin(int[] array, int heapSize, int rootIndex)
+    {
+        while (true)
+        {
+            int smallest = rootIndex;
+            int leftChild = 2 * rootIndex + 1;
+            int rightChild = 2 * rootIndex + 2;
+
+            if (leftChild < heapSize && array[leftChild] < array[smallest])
+                smallest = leftChild;
+
+            if (rightChild < heapSize && array[rightChild] < array[smallest])
+                smallest = rightChild;
+
+            if (smallest == rootIndex)
+                break;
+
+            Swap(array, rootIndex, smallest);
+            rootIndex = smallest;
+        }
+    }
+
+    /// <summary>
+    /// Swaps two elements in array
+    /// </summary>
+    private void Swap(int[] array, int i, int j)
+    {
+        if (i == j) return;
+        
+        int temp = array[i];
+        array[i] = array[j];
+        array[j] = temp;
+    }
+
+
 ```
