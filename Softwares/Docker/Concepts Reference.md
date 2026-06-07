@@ -691,4 +691,168 @@ The `Endpoint.Join()` operation :
 | 4 | Union Filesystem (OverlayFS) | Image layering, copy-on-write | Storage driver |
 | 5 | Copy-on-Write (CoW) | Defer file copying until modification | OverlayFS copy_up |
 | 6 | Content-Addressable Storage | Identify layers by hash | Registry, image storage |
-| 7 | Container Network Model (CNM) | Abstracted, pluggable networking |
+| 7 | Container Network Model (CNM) | Abstracted, pluggable networking | libnetwork |
+| 8 | VXLAN Overlay Networking | Multi-host container communication | Overlay network driver |
+| 9 | Copy-up Operation | First write file copy from lower to upper | OverlayFS |
+| 10 | Whiteout Files | Represent file deletion in overlay | OverlayFS |
+| 11 | OCI Image Specification | Standardized image format | Image distribution |
+| 12 | Registry Manifest | Layer listing and metadata | Registry API |
+| 13 | containerd-shim | Daemon-independent container management | containerd |
+| 14 | Network Namespace Sandbox | Container network isolation | CNM Sandbox |
+| 15 | veth Pair Bridging | Connect container to host network | Bridge network driver |
+| 16 | cgroup v2 Unified Hierarchy | Single filesystem tree for all controllers | cgroup driver |
+
+---
+
+## Configuration Reference
+
+### Daemon Configuration (`/etc/docker/daemon.json`)
+
+```json
+{
+  "storage-driver": "overlay2",
+  "storage-opts": ["overlay2.size=20G"],
+  "exec-opts": ["native.cgroupdriver=systemd"],
+  "log-driver": "json-file",
+  "log-opts": {
+    "max-size": "10m",
+    "max-file": "3"
+  },
+  "insecure-registries": ["myregistry.local:5000"],
+  "registry-mirrors": ["https://mirror.gcr.io"],
+  "live-restore": true,
+  "default-address-pools": [
+    {
+      "base": "172.17.0.0/16",
+      "size": 24
+    }
+  ]
+}
+```
+
+### Resource Limits (per container)
+
+```bash
+# CPU limits
+docker run --cpus=2.5                     # Use 2.5 CPU cores
+docker run --cpuset-cpus=0-3              # Only use cores 0,1,2,3
+docker run --cpu-shares=512               # Weighted share (default 1024)
+
+# Memory limits
+docker run --memory=512m                  # Hard limit 512 MB
+docker run --memory-swap=1g               # Memory + swap limit
+docker run --memory-reservation=256m      # Soft limit
+
+# I/O limits
+docker run --device-read-bps=/dev/sda:1mb
+docker run --device-write-iops=/dev/sda:100
+
+# Process limits
+docker run --pids-limit=100
+```
+
+### Network Configuration
+
+```bash
+# Create bridge network
+docker network create --driver bridge --subnet=172.20.0.0/16 my-net
+
+# Create overlay network (requires Swarm)
+docker network create --driver overlay --attachable my-overlay
+
+# Run container with specific network
+docker run --network my-net nginx
+```
+
+### Storage Driver Verification
+
+```bash
+# Check current storage driver
+docker info | grep -A5 "Storage Driver"
+
+# Expected output for overlay2:
+# Storage Driver: overlay2
+#  Backing Filesystem: extfs
+#  Supports d_type: true
+#  Native Overlay Diff: true
+```
+
+---
+
+## Performance & Complexity Reference
+
+| Operation | Complexity | Typical Performance | Notes |
+|-----------|------------|---------------------|-------|
+| Container start (cold) | O(layers) + copy_up | ~0.5-2 seconds | Includes filesystem setup |
+| Container start (warm) | O(1) namespaces | ~100-300 ms | Already has filesystem |
+| Image pull (new) | O(layers) network | Depends on layer size | Layers downloaded in parallel |
+| Image pull (cached) | O(1) hash check | ~0.1-0.5 seconds | Only manifest download |
+| First write to file | O(file size) copy_up | Large file penalty | Entire file copied |
+| Subsequent writes | O(block size) | ~10-50 µs | Already in upperdir |
+| Docker build (cache hit) | O(unchanged layers) | ~0.1 seconds per layer | Skips re-execution |
+| Container pause | O(process count) freezing | ~10-100 ms | Freezer cgroup |
+| Overlay network (VXLAN) | O(encapsulation overhead) | ~10-30% throughput loss | Plus latency increase |
+
+---
+
+## Comparison to Virtual Machines
+
+| Feature | Containers (Docker) | Virtual Machines |
+|---------|---------------------|------------------|
+| **Kernel** | Shared host kernel | Each VM has own kernel |
+| **Isolation** | Namespaces (process-level) | Hardware virtualization |
+| **Startup time** | ~100-500 ms | ~30-90 seconds |
+| **Disk usage** | MB per container (shared base) | GB per VM (full OS) |
+| **Memory overhead** | Low (process only) | High (guest OS + apps) |
+| **Performance** | Near-native | Moderate virtualization overhead |
+| **Portability** | Requires same OS kernel family | Any OS can run on any hypervisor |
+| **Security** | Moderate (escape possible) | Strong (hardware isolation) |
+| **Use cases** | Microservices, dev/test, CI/CD | Full OS isolation, Windows/Linux mixed |
+
+---
+
+## Source Code Reference
+
+| Component | Repository |
+|-----------|------------|
+| Docker CLI | `docker/cli` |
+| Docker Engine (daemon) | `moby/moby` |
+| containerd | `containerd/containerd` |
+| runC | `opencontainers/runc` |
+| libnetwork | `moby/libnetwork` |
+| OverlayFS driver | `moby/moby/daemon/graphdriver/overlay2/` |
+
+---
+
+## Conclusion
+
+Docker's design philosophy emphasizes:
+
+- **Portability**: Build once, run anywhere (Linux, Windows, cloud, on-prem)
+- **Layered efficiency**: Union filesystem for storage optimization and reuse
+- **Isolation through kernel features**: Namespaces for visibility, cgroups for resource limits
+- **Developer experience**: Simple CLI, Dockerfile abstraction, Compose for multi-container apps
+- **Extensibility**: CNM for networking, storage drivers, registry API for distribution
+
+Key innovations and patterns include:
+- **Union filesystem with copy-on-write**: Immutable images with container-specific writable layers
+- **OverlayFS multi-layer support (overlay2)**: Up to 128 lower layers, efficient inode usage
+- **Copy-up operation**: On-first-write file copying, enabling read-mostly workloads
+- **Container Network Model (CNM)**: Pluggable networking with bridge, overlay, macvlan drivers
+- **Namespace isolation**: Seven namespaces providing comprehensive process isolation
+- **Cgroup resource control**: Fine-grained CPU, memory, I/O, device, and process limits
+- **Content-addressable storage**: Cryptographic hash-based layer deduplication and integrity
+- **containerd architecture**: Shim processes for daemon-restart tolerant container management
+
+This combination of Linux kernel features and container-specific abstractions makes Docker suitable for:
+- **Microservices deployment**: Isolated services with minimal overhead
+- **Development environments**: Consistent runtime across team members
+- **CI/CD pipelines**: Ephemeral, reproducible build environments
+- **Application packaging**: "Build once, run anywhere" portability
+- **Edge and IoT**: Lightweight runtime on resource-constrained devices
+- **Multi-cloud deployments**: Consistent operations across AWS, Azure, GCP
+
+---
+
+*Document Version: 1.0*
+*Based on Docker documentation, OCI specifications, and kernel namespace/cgroup analysis*
