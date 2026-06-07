@@ -404,3 +404,7 @@ FodyWeavers.xsd
 **/.vitepress/cache/
 **/.vitepress/dist/
 **/node_modules/
+.idea/
+.idea/*
+target/
+*.log
