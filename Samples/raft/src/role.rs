@@ -1,4 +1,3 @@
-
 /// Raft node role
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RaftRole {

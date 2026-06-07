@@ -1,8 +1,8 @@
 use super::append_entries::AppendEntries;
 use super::append_entries_response::AppendEntriesResponse;
+use super::message_type::MessageType;
 use super::vote::RequestVote;
 use super::vote_response::RequestVoteResponse;
-use super::message_type::MessageType;
 
 use serde::{Deserialize, Serialize};
 

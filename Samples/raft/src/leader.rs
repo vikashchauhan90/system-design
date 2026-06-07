@@ -1,4 +1,3 @@
-
 /// Leader state (volatile)
 #[derive(Debug, Clone)]
 pub struct LeaderState {
@@ -28,7 +27,7 @@ impl LeaderState {
         let mut matches: Vec<u64> = self.match_index.iter().cloned().collect();
         matches.sort_unstable();
 
-        let new_commit = matches[matches.len() / 2];  // Majority (median)
+        let new_commit = matches[matches.len() / 2]; // Majority (median)
 
         if new_commit > current_commit {
             // Raft guarantees: only commit entries from current term

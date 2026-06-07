@@ -1,4 +1,4 @@
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 /// Log entry containing a command and its term
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

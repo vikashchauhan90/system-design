@@ -1,5 +1,5 @@
-use std::time::Duration;
 use rand::Rng;
+use std::time::Duration;
 
 /// Configuration for a Raft node
 
@@ -30,11 +30,11 @@ impl Default for RaftConfig {
         Self {
             node_id: String::new(),
             cluster_nodes: Vec::new(),
-            election_timeout_min:Duration::from_millis(150),
-            election_timeout_max:Duration::from_millis(300),
-            heartbeat_interval:Duration::from_millis(50),
-            channel_buffer_size:100,
-            max_entries_per_rpc: 100
+            election_timeout_min: Duration::from_millis(150),
+            election_timeout_max: Duration::from_millis(300),
+            heartbeat_interval: Duration::from_millis(50),
+            channel_buffer_size: 100,
+            max_entries_per_rpc: 100,
         }
     }
 }
@@ -50,10 +50,9 @@ impl RaftConfig {
 
     pub fn random_election_timeout(&self) -> Duration {
         let mut rng = rand::thread_rng();
-        let timeout =rng.gen_range(
-            self.election_timeout_min.as_millis()..self.election_timeout_max.as_millis()
+        let timeout = rng.gen_range(
+            self.election_timeout_min.as_millis()..self.election_timeout_max.as_millis(),
         );
         Duration::from_millis(timeout as u64)
     }
-
 }

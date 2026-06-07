@@ -1,5 +1,5 @@
-use crate::message::LogEntry;
 use super::storage::Storage;
+use crate::message::LogEntry;
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
@@ -17,7 +17,7 @@ impl FileStorage {
         let path = path.as_ref().to_path_buf();
         fs::create_dir_all(&path)?;
 
-        let  storage = Self {
+        let storage = Self {
             path,
             current_term: 0,
             voted_for: String::new(),
@@ -82,13 +82,16 @@ impl Storage for FileStorage {
             updated.push(entry.clone());
         }
 
-        let data = bincode::serialize(&updated).map_err(|e| format!("Serialization error: {}", e))?;
+        let data =
+            bincode::serialize(&updated).map_err(|e| format!("Serialization error: {}", e))?;
         fs::write(self.log_file(), data).map_err(|e| format!("Write error: {}", e))
     }
 
     fn load_log_entries(&self) -> Result<Vec<LogEntry>, String> {
         match fs::read(self.log_file()) {
-            Ok(data) => bincode::deserialize(&data).map_err(|e| format!("Deserialization error: {}", e)),
+            Ok(data) => {
+                bincode::deserialize(&data).map_err(|e| format!("Deserialization error: {}", e))
+            }
             Err(_) => Ok(Vec::new()),
         }
     }

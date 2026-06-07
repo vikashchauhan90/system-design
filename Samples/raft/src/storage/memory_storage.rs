@@ -1,5 +1,5 @@
-use crate::message::LogEntry;
 use super::storage::Storage;
+use crate::message::LogEntry;
 
 /// In-memory storage (for testing/development)
 pub struct InMemoryStorage {

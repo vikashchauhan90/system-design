@@ -1,7 +1,6 @@
-use std::time::{Duration, Instant};
-use super::role::RaftRole;
 use super::log::RaftLog;
-
+use super::role::RaftRole;
+use std::time::{Duration, Instant};
 
 /// Raft state machine
 #[derive(Debug, Clone)]
@@ -72,7 +71,7 @@ impl RaftState {
     /// Become leader and initialize leader state
     pub fn become_leader(&mut self) {
         self.role = RaftRole::Leader;
-        self.current_leader = None;  // Leader doesn't track itself
+        self.current_leader = None; // Leader doesn't track itself
         // Reset election timer
         self.last_heartbeat = Instant::now();
     }

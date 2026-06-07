@@ -1,5 +1,5 @@
-use serde::{Serialize, Deserialize};
 use super::entry::LogEntry;
+use serde::{Deserialize, Serialize};
 
 /// AppendEntries RPC (leader to follower)
 #[derive(Debug, Clone, Serialize, Deserialize)]

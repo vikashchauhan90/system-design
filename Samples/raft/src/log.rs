@@ -28,7 +28,7 @@ impl RaftLog {
     /// Get entry at specific index (1-indexed)
     pub fn get(&self, index: u64) -> Option<&LogEntry> {
         if index == 0 {
-            return None;  // Sentinel entry
+            return None; // Sentinel entry
         }
         self.entries.get((index - 1) as usize)
     }
@@ -55,11 +55,7 @@ impl RaftLog {
     }
 
     /// Append multiple entries, optionally truncating from a given index
-    pub fn append_from(
-        &mut self,
-        prev_log_index: u64,
-        entries: &[LogEntry],
-    ) -> bool {
+    pub fn append_from(&mut self, prev_log_index: u64, entries: &[LogEntry]) -> bool {
         // Check consistency at prev_log_index
         if let Some(existing) = self.get(prev_log_index) {
             if existing.term != entries.first().map(|e| e.term).unwrap_or(0) {

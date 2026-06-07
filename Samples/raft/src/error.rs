@@ -1,5 +1,3 @@
-
-
 /// Error types for Raft operations
 #[derive(Debug, thiserror::Error)]
 pub enum RaftError {

@@ -1,5 +1,5 @@
-use tokio::sync::mpsc::UnboundedSender;
 use crate::{Command, RaftStatus};
+use tokio::sync::mpsc::UnboundedSender;
 
 /// Raft node handle for external communication
 #[derive(Clone)]
@@ -18,7 +18,11 @@ impl RaftNodeHandle {
     /// Get the current leader
     pub async fn get_leader(&self) -> Option<String> {
         let (tx, rx) = tokio::sync::oneshot::channel::<Option<String>>();
-        if self.command_tx.send(Command::GetLeader { response_tx: tx }).is_err() {
+        if self
+            .command_tx
+            .send(Command::GetLeader { response_tx: tx })
+            .is_err()
+        {
             return None;
         }
         rx.await.ok()?
@@ -27,7 +31,11 @@ impl RaftNodeHandle {
     /// Get the current Raft status
     pub async fn get_status(&self) -> Option<RaftStatus> {
         let (tx, rx) = tokio::sync::oneshot::channel::<RaftStatus>();
-        if self.command_tx.send(Command::GetStatus { response_tx: tx }).is_err() {
+        if self
+            .command_tx
+            .send(Command::GetStatus { response_tx: tx })
+            .is_err()
+        {
             return None;
         }
         rx.await.ok()

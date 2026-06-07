@@ -1,4 +1,4 @@
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 /// RequestVote response (follower to candidate)
 #[derive(Debug, Clone, Serialize, Deserialize)]

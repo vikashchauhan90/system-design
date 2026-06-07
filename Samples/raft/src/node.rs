@@ -1,11 +1,9 @@
+use super::{Command, LeaderState, RaftRole, RaftState, RaftStatus};
 use crate::config::RaftConfig;
 use crate::message::{
     AppendEntries, AppendEntriesResponse, LogEntry, Message, RequestVote, RequestVoteResponse,
 };
-use super::{
-    LeaderState, RaftRole, RaftState, RaftStatus, Command
-};
-use crate::storage::{ Storage};
+use crate::storage::Storage;
 use std::collections::HashMap;
 use std::time::Instant;
 use tokio::sync::mpsc::{self, UnboundedReceiver, UnboundedSender};
@@ -131,10 +129,13 @@ impl<S: Storage> RaftNode<S> {
                             let _ = vote_tx_clone.send((node_id_clone, response));
                         }
                         _ => {
-                            let _ = vote_tx_clone.send((node_id_clone, RequestVoteResponse {
-                                term: 0,
-                                vote_granted: false,
-                            }));
+                            let _ = vote_tx_clone.send((
+                                node_id_clone,
+                                RequestVoteResponse {
+                                    term: 0,
+                                    vote_granted: false,
+                                },
+                            ));
                         }
                     }
                 });
@@ -175,7 +176,11 @@ impl<S: Storage> RaftNode<S> {
 
     /// Become leader
     async fn become_leader(&mut self) {
-        log::info!("Node {} became leader for term {}", self.config.node_id, self.state.current_term);
+        log::info!(
+            "Node {} became leader for term {}",
+            self.config.node_id,
+            self.state.current_term
+        );
 
         self.state.become_leader();
 
@@ -203,7 +208,10 @@ impl<S: Storage> RaftNode<S> {
                 continue;
             }
 
-            let next_idx = leader_state.as_ref().map(|ls| ls.next_index[idx]).unwrap_or(1);
+            let next_idx = leader_state
+                .as_ref()
+                .map(|ls| ls.next_index[idx])
+                .unwrap_or(1);
             let entries = if next_idx <= last_log_index {
                 self.state.log.get_entries_from(next_idx)
             } else {
@@ -241,10 +249,16 @@ impl<S: Storage> RaftNode<S> {
                                 if response.success {
                                     // Need to update through the node's reference
                                     // This is handled in the update_commit_index method
-                                    log::debug!("Follower {} acknowledged entries up to index {}",
-                                        node_id_clone, response.match_index);
+                                    log::debug!(
+                                        "Follower {} acknowledged entries up to index {}",
+                                        node_id_clone,
+                                        response.match_index
+                                    );
                                 } else {
-                                    log::debug!("Follower {} rejected AppendEntries", node_id_clone);
+                                    log::debug!(
+                                        "Follower {} rejected AppendEntries",
+                                        node_id_clone
+                                    );
                                 }
                             }
                         }
@@ -280,10 +294,7 @@ impl<S: Storage> RaftNode<S> {
     }
 
     /// Handle AppendEntries RPC
-    async fn handle_append_entries(
-        &mut self,
-        entries: AppendEntries,
-    ) -> AppendEntriesResponse {
+    async fn handle_append_entries(&mut self, entries: AppendEntries) -> AppendEntriesResponse {
         if entries.term < self.state.current_term {
             return AppendEntriesResponse {
                 term: self.state.current_term,
@@ -309,7 +320,8 @@ impl<S: Storage> RaftNode<S> {
                 let conflict_term = prev_term;
                 let mut conflict_index = entries.prev_log_index;
 
-                while conflict_index > 0 && self.state.log.term_at(conflict_index) == conflict_term {
+                while conflict_index > 0 && self.state.log.term_at(conflict_index) == conflict_term
+                {
                     conflict_index -= 1;
                 }
                 conflict_index += 1;
@@ -327,7 +339,9 @@ impl<S: Storage> RaftNode<S> {
         let success = if entries.entries.is_empty() {
             true
         } else {
-            self.state.log.append_from(entries.prev_log_index, &entries.entries)
+            self.state
+                .log
+                .append_from(entries.prev_log_index, &entries.entries)
         };
 
         if !success {
@@ -342,7 +356,9 @@ impl<S: Storage> RaftNode<S> {
 
         if !entries.entries.is_empty() {
             let last_entry = entries.entries.last().unwrap();
-            let _ = self.storage.save_log_entry(self.state.log.last_index(), last_entry);
+            let _ = self
+                .storage
+                .save_log_entry(self.state.log.last_index(), last_entry);
         }
 
         if entries.leader_commit > self.state.log.commit_index() {
@@ -364,10 +380,7 @@ impl<S: Storage> RaftNode<S> {
     }
 
     /// Handle RequestVote RPC
-    async fn handle_request_vote(
-        &mut self,
-        request: RequestVote,
-    ) -> RequestVoteResponse {
+    async fn handle_request_vote(&mut self, request: RequestVote) -> RequestVoteResponse {
         if request.term < self.state.current_term {
             return RequestVoteResponse {
                 term: self.state.current_term,
@@ -377,15 +390,18 @@ impl<S: Storage> RaftNode<S> {
 
         if request.term > self.state.current_term {
             self.state.update_term(request.term);
-            self.state.become_follower(Some(request.candidate_id.clone()));
+            self.state
+                .become_follower(Some(request.candidate_id.clone()));
             let _ = self.storage.save_current_term(self.state.current_term);
             let _ = self.storage.save_voted_for("");
         }
 
-        let can_vote = self.state.voted_for.is_empty()
-            || self.state.voted_for == request.candidate_id;
+        let can_vote =
+            self.state.voted_for.is_empty() || self.state.voted_for == request.candidate_id;
 
-        let log_ok = self.state.is_log_up_to_date(request.last_log_index, request.last_log_term);
+        let log_ok = self
+            .state
+            .is_log_up_to_date(request.last_log_index, request.last_log_term);
 
         let vote_granted = can_vote && log_ok;
 
@@ -435,11 +451,17 @@ impl<S: Storage> RaftNode<S> {
                     Err(e) => log::error!("Failed to propose command: {}", e),
                 }
             }
-            Command::AppendEntries { entries, response_tx } => {
+            Command::AppendEntries {
+                entries,
+                response_tx,
+            } => {
                 let response = self.handle_append_entries(entries).await;
                 let _ = response_tx.send(response);
             }
-            Command::RequestVote { request, response_tx } => {
+            Command::RequestVote {
+                request,
+                response_tx,
+            } => {
                 let response = self.handle_request_vote(request).await;
                 let _ = response_tx.send(response);
             }

@@ -1,4 +1,4 @@
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 /// AppendEntries response (follower to leader)
 #[derive(Debug, Clone, Serialize, Deserialize)]
