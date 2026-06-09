@@ -14,9 +14,9 @@ public sealed class OffsetIndex
 
     public IReadOnlyList<OffsetIndexEntry> Entries => _entries;
 
-    public void Append(long offset, long position)
+    public void Append(long offset, long position, bool force = false)
     {
-        if (_entries.Count == 0 || offset - _entries[^1].Offset >= _sparseInterval)
+        if (force || _entries.Count == 0 || offset - _entries[^1].Offset >= _sparseInterval)
         {
             _entries.Add(new OffsetIndexEntry(offset, position));
         }

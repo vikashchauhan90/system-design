@@ -14,23 +14,30 @@ public sealed class LogSegment
     public string DataFilePath { get; }
     public string OffsetIndexPath { get; }
     public string TimeIndexPath { get; }
+    public string TransactionIndexPath { get; }
 
+    public AppendLogConfig Config { get; }
     public OffsetIndex OffsetIndex { get; }
     public TimeIndex TimeIndex { get; }
     public TransactionIndex TransactionIndex { get; }
 
-    public LogSegment(string directoryPath, long baseOffset, int offsetIndexInterval = 100, TimeSpan? timeIndexInterval = null)
+    private long _bytesSinceLastIndexEntry;
+
+    public LogSegment(string directoryPath, long baseOffset, AppendLogConfig? config = null)
     {
+        Config = config ?? new AppendLogConfig();
         DirectoryPath = directoryPath;
         BaseOffset = baseOffset;
         CreatedAt = DateTime.UtcNow;
         DataFilePath = Path.Combine(directoryPath, $"segment-{baseOffset}.log");
         OffsetIndexPath = Path.Combine(directoryPath, $"segment-{baseOffset}.offset.idx");
         TimeIndexPath = Path.Combine(directoryPath, $"segment-{baseOffset}.time.idx");
+        TransactionIndexPath = Path.Combine(directoryPath, $"segment-{baseOffset}.txn.idx");
 
         Directory.CreateDirectory(directoryPath);
-        OffsetIndex = OffsetIndex.Load(OffsetIndexPath, offsetIndexInterval);
-        TimeIndex = TimeIndex.Load(TimeIndexPath, 1024, timeIndexInterval);
+        OffsetIndex = OffsetIndex.Load(OffsetIndexPath, Config.OffsetIndexInterval);
+        TimeIndex = TimeIndex.Load(TimeIndexPath, Config.TimeIndexMaxEntries, Config.TimeIndexSparseInterval);
+        TransactionIndex = TransactionIndex.Load(TransactionIndexPath);
         NextOffset = CalculateNextOffset();
     }
 
@@ -101,9 +108,16 @@ public sealed class LogSegment
         WriteBatch(stream, batch);
         stream.Flush();
 
-        OffsetIndex.Append(batch.BaseOffset, position);
-        TimeIndex.MaybeAppend(batch.BaseOffset, batch.Timestamp);
-        SaveIndexes();
+        var written = stream.Position - position;
+        _bytesSinceLastIndexEntry += written;
+
+        if (OffsetIndex.Entries.Count == 0 || _bytesSinceLastIndexEntry >= Config.IndexIntervalBytes)
+        {
+            OffsetIndex.Append(batch.BaseOffset, position, force: true);
+            TimeIndex.Append(batch.BaseOffset, batch.Timestamp);
+            _bytesSinceLastIndexEntry = 0;
+            SaveIndexes();
+        }
 
         NextOffset = batch.LastOffset + 1;
     }
@@ -245,6 +259,40 @@ public sealed class LogSegment
                 yield return batch;
             }
         }
+    }
+
+    public RecordBatch? ReadBatchAtOffset(long offset)
+    {
+        var position = FindPositionForOffset(offset);
+        if (position < 0)
+        {
+            return null;
+        }
+
+        using var stream = File.OpenRead(DataFilePath);
+        stream.Seek(position, SeekOrigin.Begin);
+
+        if (!TryReadBatchHeader(stream, out var batch))
+        {
+            return null;
+        }
+
+        var records = new List<Record>(batch.Count);
+        for (var i = 0; i < batch.Count; i++)
+        {
+            var header = new byte[sizeof(int) * 2 + sizeof(long)];
+            stream.Read(header);
+            var keyLen = BinaryPrimitives.ReadInt32LittleEndian(header[..4]);
+            var valueLen = BinaryPrimitives.ReadInt32LittleEndian(header[4..8]);
+            var recordTimestamp = new DateTime(BinaryPrimitives.ReadInt64LittleEndian(header[8..16]), DateTimeKind.Utc);
+            var key = new byte[keyLen];
+            var value = new byte[valueLen];
+            stream.Read(key);
+            stream.Read(value);
+            records.Add(new Record(key, value, recordTimestamp));
+        }
+
+        return new RecordBatch(batch.BaseOffset, batch.Timestamp, records);
     }
 
     private void SaveIndexes()

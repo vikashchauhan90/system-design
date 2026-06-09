@@ -18,6 +18,11 @@ public sealed class TimeIndex
 
     public bool IsFull() => _entries.Count >= _maxEntries;
 
+    public void Append(long offset, DateTime timestamp)
+    {
+        _entries.Add(new TimeIndexEntry(timestamp, offset));
+    }
+
     public void MaybeAppend(long offset, DateTime timestamp)
     {
         if (_entries.Count == 0 || timestamp - _entries[^1].Timestamp >= _sparseInterval)
