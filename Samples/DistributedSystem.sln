@@ -8,6 +8,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DistributedSystem.AppendLog
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DistributedSystem.WAL", "DistributedSystem.WAL\DistributedSystem.WAL.csproj", "{1A3DCE34-D83E-4379-8069-9F6CB5B4F3AD}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DistributedSystem.HyperLogLog", "DistributedSystem.HyperLogLog\DistributedSystem.HyperLogLog.csproj", "{1B0749F3-80BB-439D-ACB4-AA341DC77670}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DistributedSystem.2PC", "DistributedSystem.2PC\DistributedSystem.2PC.csproj", "{55BBC9CF-E1D1-4752-9C4B-B68DFD3F5DCE}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -26,6 +30,14 @@ Global
 		{1A3DCE34-D83E-4379-8069-9F6CB5B4F3AD}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1A3DCE34-D83E-4379-8069-9F6CB5B4F3AD}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{1A3DCE34-D83E-4379-8069-9F6CB5B4F3AD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1B0749F3-80BB-439D-ACB4-AA341DC77670}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1B0749F3-80BB-439D-ACB4-AA341DC77670}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1B0749F3-80BB-439D-ACB4-AA341DC77670}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1B0749F3-80BB-439D-ACB4-AA341DC77670}.Release|Any CPU.Build.0 = Release|Any CPU
+		{55BBC9CF-E1D1-4752-9C4B-B68DFD3F5DCE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{55BBC9CF-E1D1-4752-9C4B-B68DFD3F5DCE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{55BBC9CF-E1D1-4752-9C4B-B68DFD3F5DCE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{55BBC9CF-E1D1-4752-9C4B-B68DFD3F5DCE}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
