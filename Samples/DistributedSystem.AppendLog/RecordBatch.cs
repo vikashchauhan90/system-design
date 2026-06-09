@@ -1,6 +1,6 @@
 using System.Text;
 
-namespace DistributedSystem.Core.AppendLog;
+namespace DistributedSystem.AppendLog;
 
 public sealed class Record
 {

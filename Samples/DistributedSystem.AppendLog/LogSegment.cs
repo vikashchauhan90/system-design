@@ -1,7 +1,7 @@
 using System.Buffers.Binary;
 using System.Text;
 
-namespace DistributedSystem.Core.AppendLog;
+namespace DistributedSystem.AppendLog;
 
 public sealed class LogSegment
 {
@@ -14,7 +14,6 @@ public sealed class LogSegment
     public string DataFilePath { get; }
     public string OffsetIndexPath { get; }
     public string TimeIndexPath { get; }
-    public string TransactionIndexPath { get; }
 
     public OffsetIndex OffsetIndex { get; }
     public TimeIndex TimeIndex { get; }
@@ -28,12 +27,10 @@ public sealed class LogSegment
         DataFilePath = Path.Combine(directoryPath, $"segment-{baseOffset}.log");
         OffsetIndexPath = Path.Combine(directoryPath, $"segment-{baseOffset}.offset.idx");
         TimeIndexPath = Path.Combine(directoryPath, $"segment-{baseOffset}.time.idx");
-        TransactionIndexPath = Path.Combine(directoryPath, $"segment-{baseOffset}.txn.idx");
 
         Directory.CreateDirectory(directoryPath);
         OffsetIndex = OffsetIndex.Load(OffsetIndexPath, offsetIndexInterval);
         TimeIndex = TimeIndex.Load(TimeIndexPath, 1024, timeIndexInterval);
-        TransactionIndex = TransactionIndex.Load(TransactionIndexPath);
         NextOffset = CalculateNextOffset();
     }
 
@@ -202,12 +199,6 @@ public sealed class LogSegment
         OffsetIndex.TruncateTo(truncateOffset);
         TimeIndex.TruncateTo(truncateOffset);
         SaveIndexes();
-    }
-
-    public void AppendTransaction(long transactionId, long startOffset, TransactionState state)
-    {
-        TransactionIndex.Append(transactionId, startOffset, state);
-        TransactionIndex.Save(TransactionIndexPath);
     }
 
     public TransactionIndexEntry? LookupTransaction(long transactionId)
