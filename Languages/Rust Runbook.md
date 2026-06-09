@@ -779,6 +779,58 @@ Then use `crate::raft::RaftRole` or `crate::storage::Storage` from other modules
 
 ---
 
+
+## 12. Additional advanced topics
+
+Below are important advanced topics and ecosystem areas that are commonly needed in production Rust systems. Add depth to any of these as you use them.
+
+- Pinning (`Pin`, `Unpin`): required for self-referential structs and some async patterns. Use `Pin<Box<T>>` when you need an owned, immovable value.
+
+```rust
+use std::pin::Pin;
+let boxed = Box::pin(5); // Pin<Box<i32>>
+```
+
+- FFI and `extern` blocks: calling C or exposing C APIs. Mind ownership, ABI, and safety.
+
+```rust
+#[no_mangle]
+pub extern "C" fn add(a: i32, b: i32) -> i32 { a + b }
+```
+
+- Macros:
+    - Declarative (`macro_rules!`) for syntactic DSLs.
+    - Procedural macros (derive / attribute / function-like) for code generation.
+
+- Const generics and `const fn`: parameterize types by values and do more work at compile time.
+
+- Generic Associated Types (GATs) and Higher-Ranked Trait Bounds (HRTBs): advanced type-system features used in async abstractions and streaming APIs.
+
+- Unsafe Rust patterns and guidelines: careful use of `unsafe` to implement low-level abstractions; prefer encapsulating `unsafe` behind safe APIs and document invariants.
+
+- `no_std` and embedded Rust: writing code without the standard library for constrained environments; use `alloc` when available and `cortex-m`/`embedded-hal` crates for hardware.
+
+- WebAssembly (WASM): `wasm-bindgen`, `wasm-pack`, and considerations for memory and JS interaction.
+
+- Performance and profiling: `cargo bench`, `criterion` for benchmarking, `perf`/`Windows ETW`/`benchmarks`, and tools like `heaptrack` or `valgrind` for memory.
+
+- Async ecosystem and runtimes: `Tokio`, `async-std`, `smol`; async patterns (executors, tasks, reactors), and common crates like `hyper`, `reqwest`.
+
+- Concurrency libraries: `crossbeam`, `parking_lot`, `rayon` for parallel iterators and data-parallel workloads.
+
+- Serialization and formats: `serde` (with `serde_json`, `bincode`, `rmp`) and schema considerations.
+
+- Error handling best practices and crates: `thiserror`, `anyhow`, context propagation, and mapping errors across FFI and async boundaries.
+
+- Build and packaging: `cargo` features, workspaces, conditional compilation, `build.rs` scripts, and publishing crates to `crates.io`.
+
+- Testing and property testing: `proptest`, `quickcheck`, integration tests, documentation tests, and test harness tips.
+
+- Tooling and CI: `rustfmt`, `clippy`, `cargo-audit`, dependency pinning, and setting up GitHub Actions for Rust checks.
+
+If you want, I can expand any of these into full subsections with code examples, pitfalls, and recommended crates. Tell me which items to expand first.
+
+---
 ## Closing
 
 This runbook is designed to be a learning path from Rust basics to advanced concepts. Use it as a reference while building projects and exploring the language.

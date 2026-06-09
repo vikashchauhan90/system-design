@@ -218,9 +218,19 @@ var dog = new Dog();
 dog.Speak();        // Dog says woof
 
 dog.SpeakAsBase();  // BaseAnimal speaks
+
+BaseAnimal animal = dog;
+
+animal.Speak();        // Dog says woof
+
+// Then this uses polymorphism, and animal.Speak() calls the Dog override at runtime, printing. If Speak were not virtual, it would instead call BaseAnimal.Speak().
+
 ```
 
 The `base` keyword calls the base class implementation from a derived class. It is useful when overriding a virtual method but still needing the base behavior.
+
+This uses polymorphism, and `animal.Speak()` calls the Dog override at runtime, printing. If `Speak` were not `virtual`, it would instead call `BaseAnimal.Speak()`.
+
 
 ### 2.3.1 Method dispatch and inheritance
 
@@ -476,11 +486,19 @@ Implementing types can override the default method, but they do not have to.
 
 ### 2.6 Records
 
-Records are useful for immutable data.
+Records are useful for immutable data and value-like equality semantics.
 
 ```csharp
 public record User(string Name, int Age);
+
+var user1 = new User("Alice", 30);
+var user2 = user1 with { Age = 31 };
+
+Console.WriteLine(user1); // User { Name = Alice, Age = 30 }
+Console.WriteLine(user2); // User { Name = Alice, Age = 31 }
 ```
+
+The `with` expression creates a new record instance based on an existing one while allowing you to change selected properties.
 
 ---
 
@@ -673,13 +691,18 @@ using var file = File.OpenRead("data.txt");
 
 ### 5.1 Delegates
 
-A delegate is a type-safe function reference.
+A delegate is a type-safe function reference. It can point to a named method or an anonymous function.
 
 ```csharp
 public delegate int MathOp(int x, int y);
 
-MathOp add = (x, y) => x + y;
+// Anonymous method using `delegate`
+MathOp add = delegate(int x, int y) { return x + y; };
 Console.WriteLine(add(3, 4));
+
+// Lambda expression as an anonymous function
+MathOp subtract = (x, y) => x - y;
+Console.WriteLine(subtract(7, 2));
 ```
 
 ### 5.2 Events
@@ -692,11 +715,31 @@ public class Clock
 }
 ```
 
-### 5.3 Lambda expressions
+### 5.3 Lambda expressions and static lambdas
+
+Lambda expressions are anonymous functions that can be assigned to delegate or expression-tree types.
 
 ```csharp
+var numbers = new[] { 1, 2, 3, 4 };
 var squares = numbers.Select(n => n * n).ToList();
 ```
+
+A regular lambda can capture variables from the enclosing scope, creating a closure:
+
+```csharp
+int multiplier = 3;
+Func<int, int> scale = x => x * multiplier;
+Console.WriteLine(scale(5)); // 15
+```
+
+A static lambda is still anonymous, but it cannot capture outer variables. That makes it more efficient and avoids closures.
+
+```csharp
+Func<int, int, int> multiply = static (x, y) => x * y;
+Console.WriteLine(multiply(3, 4)); // 12
+```
+
+If you try to capture a local variable inside a static lambda, the compiler reports an error. Use `static` when the lambda does not depend on its surrounding environment.
 
 ### 5.4 `ref`, `out`, and `in` parameter modifiers
 
@@ -934,14 +977,50 @@ await something.ConfigureAwait(false);
 
 ### 8.5 `ValueTask`
 
-Use `ValueTask<T>` for high-performance async paths when the result is often already available.
+`ValueTask<T>` is a lightweight alternative to `Task<T>`. It can avoid heap allocations when the result is already available synchronously, but it has more usage rules than `Task<T>`.
+
+- Use `Task<T>` for most async APIs.
+- Use `ValueTask<T>` when the operation is frequently completed synchronously and reducing allocations is important.
+- Avoid `ValueTask<T>` for public APIs unless callers can handle it correctly.
+- Do not await the same `ValueTask<T>` instance more than once.
 
 ```csharp
-public async ValueTask<int> GetValueAsync()
+public ValueTask<int> GetValueAsync(bool useCache)
 {
-    return 42;
+    if (useCache)
+    {
+        // synchronous cache hit, no allocation for a Task
+        return new ValueTask<int>(42);
+    }
+
+    // asynchronous path for cache miss
+    return new ValueTask<int>(FetchValueFromStoreAsync());
+}
+
+private async Task<int> FetchValueFromStoreAsync()
+{
+    await Task.Delay(10);
+    return 100;
 }
 ```
+
+A common scenario is a cache-first lookup:
+
+```csharp
+public async ValueTask<string> GetCachedDataAsync(string key)
+{
+    if (TryGetFromCache(key, out var cachedValue))
+    {
+        return cachedValue; // fast, synchronous result
+    }
+
+    return await FetchFromDatabaseAsync(key);
+}
+```
+
+Use `ValueTask<T>` when a cache hit is common and the hot path is synchronous, such as a Redis or in-memory cache lookup before fetching external data.
+
+If the operation is always asynchronous or the result is rarely available immediately, prefer `Task<T>`.
 
 ---
 
@@ -955,12 +1034,63 @@ public async ValueTask<int> GetValueAsync()
 
 ### 9.1.1 Memory management in C#
 
-.NET uses managed memory and a garbage collector. Objects are allocated on the managed heap, and the runtime periodically reclaims unreachable memory.
+C# memory management is divided between the stack and the heap.
 
-- Small objects are allocated in generation 0.
-- Long-lived objects are promoted to higher generations.
-- `IDisposable` is used for unmanaged resources and should be released with `using`.
-- `GC.Collect()` can be invoked manually, but it is usually best left to the runtime.
+- Value types (`struct`, primitive types like `int`, `bool`, `double`) are usually allocated on the stack when they are local variables or method parameters.
+- Reference types (`class`, arrays, `string`, delegates, closures) are allocated on the managed heap.
+- A reference type variable itself is stored on the stack, but it points to an object on the heap.
+- When a value type is a field of a class or is captured by a closure, the value is stored on the heap as part of the enclosing object.
+
+```csharp
+int x = 10;               // value type on the stack
+string text = "hello";  // reference on the stack, string object on the heap
+
+class PointHolder
+{
+    public int X;
+    public int Y;
+}
+
+var holder = new PointHolder { X = 1, Y = 2 };
+// holder is on the heap, and the X and Y fields are also stored inside that heap object.
+```
+
+### Stack
+
+- Used for local variables, method parameters, and return addresses.
+- Allocation is fast and freed automatically when a method returns.
+- Good for small, short-lived values.
+- `Span<T>` and `stackalloc` can allocate temporary data on the stack.
+
+```csharp
+Span<int> buffer = stackalloc int[10];
+```
+
+### Heap
+
+- Used for reference-type objects, captured variables in closures, arrays, and most dynamic data.
+- Garbage-collected by the runtime when objects become unreachable.
+- Heap allocation is more expensive than stack allocation, so avoiding unnecessary heap allocation is important.
+- Boxing a value type (`object boxed = 123;`) stores the boxed copy on the heap.
+
+```csharp
+int n = 42;
+object boxed = n; // value type is boxed and allocated on the heap
+```
+
+### Generations and GC behavior
+
+- New objects are allocated in generation 0.
+- Objects that survive collections are promoted to generation 1 and then generation 2.
+- Long-lived objects stay in older generations, which reduces collection frequency for stable data.
+
+### Practical guidance
+
+- Prefer value types for small, short-lived data when you do not need reference semantics.
+- Prefer reference types for objects with identity, polymorphism, or large heap data.
+- Minimize boxing and unnecessary allocations on the heap.
+- Use `IDisposable` and `using` for unmanaged resources.
+- Let the GC do its job; avoid calling `GC.Collect()` explicitly unless you have a very specific reason.
 
 ```csharp
 using var stream = File.OpenRead("data.txt");
@@ -1028,6 +1158,38 @@ For data-parallel work:
 
 ```csharp
 Parallel.For(0, 10, i => Console.WriteLine(i));
+```
+
+You can also use `Task<T>` to run parallel work and collect results directly:
+
+```csharp
+var tasks = Enumerable.Range(1, 5)
+    .Select(n => Task.Run(() => n * n))
+    .ToArray();
+
+int[] results = await Task.WhenAll(tasks);
+Console.WriteLine(string.Join(", ", results)); // 1, 4, 9, 16, 25
+```
+
+`Parallel.ForEach` does not return results directly, but you can capture them safely in a concurrent collection:
+
+```csharp
+var bag = new ConcurrentBag<int>();
+Parallel.ForEach(Enumerable.Range(1, 5), n =>
+{
+    bag.Add(n * n);
+});
+
+var results = bag.OrderBy(x => x).ToList();
+```
+
+For query-style parallelism, use PLINQ:
+
+```csharp
+var plinqResults = Enumerable.Range(1, 5)
+    .AsParallel()
+    .Select(n => n * n)
+    .ToList();
 ```
 
 ### 10.3 `async` and `IAsyncEnumerable<T>`
