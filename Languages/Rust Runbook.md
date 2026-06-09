@@ -51,14 +51,21 @@ Primitive types:
 - `char`
 - tuples `(i32, bool)`
 - arrays `[i32; 3]`
+- string slices `&str` and owned `String`
 
 Example:
 
 ```rust
 let id: u32 = 42;
 let name: &str = "rust";
+let message: String = String::from("hello");
 let pair: (i32, bool) = (1, true);
 ```
+
+`&str` is an immutable view into UTF-8 string data, often stored in binary or string literals.
+`String` is an owned, heap-allocated UTF-8 string that can grow and be modified.
+
+Use `&str` for borrowed text and `String` when you need ownership or mutation.
 
 ### 1.4 Control flow
 
@@ -73,6 +80,11 @@ let result = if x > 5 { "yes" } else { "no" };
 
 for i in 0..3 {
     println!("{}", i);
+}
+
+let values = vec![10, 20, 30];
+for value in &values {
+    println!("value by reference = {}", value);
 }
 
 let mut n = 0;
@@ -90,9 +102,51 @@ fn add(a: i32, b: i32) -> i32 {
 }
 
 let sum = add(2, 3);
+
+fn swap<T>(a: T, b: T) -> (T, T) {
+    (b, a)
+}
+
+let (first, second) = swap(1, 2);
+println!("first={}, second={}", first, second);
+
+fn print_display(value: &dyn std::fmt::Display) {
+    println!("display: {}", value);
+}
+
+print_display(&"borrowed text");
+
+fn make_debug_box<T: std::fmt::Debug + 'static>(value: T) -> Box<dyn std::fmt::Debug> {
+    Box::new(value)
+}
+
+let boxed = make_debug_box(42);
+println!("boxed debug = {:?}", boxed);
 ```
 
 Expression-based return avoids `return` in simple cases.
+
+### 1.6 Closures and lambda functions
+
+Closures are Rust's lambda-style anonymous functions. They can capture variables from their environment by reference, mutable reference, or by value.
+
+```rust
+let add_one = |x: i32| x + 1;
+println!("add_one(2) = {}", add_one(2));
+
+let multiplier = 3;
+let multiply = |x: i32| x * multiplier;
+println!("multiply(4) = {}", multiply(4));
+
+let mut total = 0;
+let mut accumulate = |x: i32| {
+    total += x;
+};
+accumulate(5);
+println!("total = {}", total);
+```
+
+Closures are often used for callbacks, iterators, and functional-style transformations.
 
 ---
 
@@ -148,9 +202,18 @@ Lifetimes describe how long references are valid.
 fn longest<'a>(x: &'a str, y: &'a str) -> &'a str {
     if x.len() > y.len() { x } else { y }
 }
+
+static GREETING: &str = "hello, world";
+
+fn shout() -> &'static str {
+    GREETING
+}
+
+let message: &'static str = shout();
+println!("{}", message);
 ```
 
-They prevent dangling references by ensuring returned references do not outlive inputs.
+They prevent dangling references by ensuring returned references do not outlive inputs. The `'static` lifetime means the reference is valid for the entire duration of the program.
 
 ---
 
@@ -175,6 +238,26 @@ enum Message {
     Move { x: i32, y: i32 },
     Write(String),
     ChangeColor(i32, i32, i32),
+}
+```
+
+A more structured enum example is a Raft role type with a helper method returning a `&'static str` label.
+
+```rust
+pub enum RaftRole {
+    Follower,
+    Candidate,
+    Leader,
+}
+
+impl RaftRole {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            RaftRole::Follower => "FOLLOWER",
+            RaftRole::Candidate => "CANDIDATE",
+            RaftRole::Leader => "LEADER",
+        }
+    }
 }
 ```
 
@@ -212,6 +295,32 @@ impl Summary for Article {
     }
 }
 ```
+
+A storage trait for a Raft node can define persistence operations and require thread-safe implementations with `Send + Sync`.
+
+```rust
+pub trait Storage: Send + Sync {
+    /// Save current term
+    fn save_current_term(&self, term: u64) -> Result<(), String>;
+
+    /// Load current term
+    fn load_current_term(&self) -> Result<u64, String>;
+
+    /// Save voted for
+    fn save_voted_for(&self, voted_for: &str) -> Result<(), String>;
+
+    /// Load voted for
+    fn load_voted_for(&self) -> Result<String, String>;
+
+    /// Save log entry
+    fn save_log_entry(&self, index: u64, entry: &LogEntry) -> Result<(), String>;
+
+    /// Load log entries
+    fn load_log_entries(&self) -> Result<Vec<LogEntry>, String>;
+}
+```
+
+`Send + Sync` ensures the storage implementation is safe to share across threads, which is often required for distributed system components.
 
 ### 4.2 Generics
 
@@ -569,6 +678,104 @@ fn draw_box(item: Box<dyn Draw>) {
 ```
 
 Use `dyn` when the concrete type is not known at compile time or when you need to store mixed implementations in one container.
+
+---
+
+## 11. Modules and crates
+
+Rust uses modules to organize code into namespaces and crates to package projects or libraries.
+
+### Creating modules
+
+Use `mod` to define a module inside a file or to declare a sibling module file.
+
+```rust
+mod network {
+    pub fn connect() {}
+}
+
+fn main() {
+    network::connect();
+}
+```
+
+For a sibling file module, create `network.rs` and declare it from `lib.rs` or `main.rs`:
+
+```rust
+mod network;
+```
+
+Then `network.rs` can contain the module contents.
+
+### When to use `crate::`
+
+Use `crate::` to refer to the crate root from anywhere inside the crate.
+This is helpful for absolute paths and avoids ambiguity when moving modules.
+
+```rust
+use crate::network::connect;
+```
+
+Use `crate::` when you want a stable path from the root of the package, especially in larger projects.
+
+### When to use `self::`
+
+Use `self::` to refer to the current module.
+It is useful for explicit local paths and reexporting symbols.
+
+```rust
+pub fn do_work() {}
+
+pub fn call_self() {
+    self::do_work();
+}
+```
+
+### When to use `super::`
+
+Use `super::` to access items from the parent module.
+This is useful when a submodule needs to reach siblings or shared helpers defined one level up.
+
+```rust
+mod parent {
+    pub fn helper() {}
+
+    pub mod child {
+        pub fn call_helper() {
+            super::helper();
+        }
+    }
+}
+```
+
+Use `super::` when the dependency is local to the module hierarchy and you want to keep the path relative.
+
+### Best practices
+
+- Prefer `crate::` for absolute crate-local references.
+- Prefer `super::` for sibling-parent module access inside a module tree.
+- Keep modules small and focused: one responsibility per module.
+- Use `pub` and `pub(crate)` to control visibility deliberately.
+- Use `mod` in parent files to declare submodules and keep file structure aligned with module paths.
+
+### Module layout example
+
+A common layout for a library crate:
+
+- `src/lib.rs`
+  - `mod raft;
+  - mod storage;`
+- `src/raft.rs`
+- `src/storage.rs`
+
+In `src/lib.rs`:
+
+```rust
+pub mod raft;
+pub mod storage;
+```
+
+Then use `crate::raft::RaftRole` or `crate::storage::Storage` from other modules.
 
 ---
 

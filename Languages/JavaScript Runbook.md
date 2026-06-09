@@ -48,16 +48,115 @@ var old = 'legacy';
 - `let` creates block-scoped variables.
 - `var` is function-scoped and hoisted.
 
-### 1.4 LHS vs RHS values
+### 1.4 Scope
 
-JavaScript expressions evaluate as either LHS or RHS values.
+JavaScript variables and functions exist in scopes, which determine where a name is accessible.
 
-- RHS (right-hand side) means "evaluate and read the value." Example: `const x = y + 1;` uses `y` as an RHS value.
-- LHS (left-hand side) means "assign to this location." Example: `x = 10;` uses `x` as an LHS reference.
+- **Global scope**: variables declared outside any function or module are global.
+- **Function scope**: `var` declarations are visible throughout the enclosing function.
+- **Block scope**: `let` and `const` are scoped to the nearest block `{ ... }`.
+- **Module scope**: top-level bindings in ES modules are local to the module.
 
-A variable can appear as both: `x = y = 5;`
+Example:
+
+```js
+function example() {
+  var a = 1;      // function-scoped
+  let b = 2;      // block-scoped
+  const c = 3;    // block-scoped
+
+  if (true) {
+    let d = 4;
+    console.log(b); // visible: b is declared in the outer function block
+    console.log(a); // visible: a is function-scoped
+  }
+
+  console.log(d);   // ReferenceError: d is not defined
+}
+```
+
+Another key difference is hoisting behavior:
+
+```js
+function example() {
+  console.log(x); // undefined, because var is hoisted
+  var x = 1;
+
+  console.log(y); // ReferenceError: Cannot access 'y' before initialization
+  let y = 2;
+}
+```
+
+Understanding scope and declaration timing helps avoid both reference errors and invalid assignments.
+
+#### Assignment and LHS/RHS roles within scope
+
+Assignment is a scope-sensitive operation.
+A name on the left-hand side (LHS) of `=` must resolve to a writable location in the current scope. The right-hand side (RHS) is evaluated as a value.
+
+Example:
+
+```js
+let x = 1;       // x is declared in the current scope
+x = 2;           // LHS assignment to x
+const y = x + 3; // RHS reads x's value
+```
+
+A common error occurs when the LHS is not a valid assignable reference:
+
+```js
+const foo = 1;
+foo + 2 = 3; // TypeError: Invalid left-hand side in assignment
+```
+
+This is both a scope and assignment issue: the expression `foo + 2` is not an assignable reference in any scope. Valid LHS targets include:
+
+```js
+let a;
+a = 10;
+obj.prop = 'value';
+[a, b] = [1, 2];
+```
+
+Use scope rules and LHS/RHS understanding together to write correct assignments and avoid reference errors.
+
+Valid LHS examples:
+
+```js
+let x;
+x = 10;            // identifier as LHS
+obj.name = 'Bob';  // property access as LHS
+[a, b] = [1, 2];   // destructuring target as LHS
+```
 
 Understanding LHS/RHS is critical for destructuring, assignment, and scope.
+
+### 1.5 Hoisting
+
+Hoisting is the compile-time behavior where JavaScript moves declarations to the top of their containing scope.
+
+- `var` declarations are hoisted and initialized to `undefined`.
+- `let` and `const` declarations are also hoisted, but they remain uninitialized until evaluation, causing the temporal dead zone.
+
+Example with `var`:
+
+```js
+function example() {
+  console.log(x); // undefined
+  var x = 1;
+}
+```
+
+Example with `let` / `const`:
+
+```js
+function example() {
+  console.log(y); // ReferenceError: Cannot access 'y' before initialization
+  let y = 2;
+}
+```
+
+Hoisting explains why `var` can be referenced before assignment while `let` and `const` cannot.
 
 ---
 
@@ -166,6 +265,88 @@ console.log(inc()); // 1
 console.log(inc()); // 2
 ```
 
+A classic closure gotcha appears with `for` loops and `setTimeout`.
+
+```js
+for (var i = 1; i <= 10; i++) {
+  setTimeout(function () {
+    console.log('var loop:', i);
+  }, i * 100);
+}
+```
+
+Because `var` is function-scoped, the closure captures the same `i` variable, so all callbacks print `11` after the loop completes.
+
+Using `let` fixes this because each iteration gets its own block-scoped binding:
+
+```js
+for (let i = 1; i <= 10; i++) {
+  setTimeout(function () {
+    console.log('let loop:', i);
+  }, i * 100);
+}
+```
+
+With `let`, each callback closes over the value of `i` for that iteration, printing `1` through `10`.
+
+### 4.5 Function methods: bind, call, apply, and browser callbacks
+
+JavaScript functions are objects and provide methods for controlling `this` and arguments.
+
+```js
+const button = {
+  label: 'Submit',
+  handleClick() {
+    console.log(`Clicked: ${this.label}`);
+  }
+};
+
+const otherButton = { label: 'Cancel' };
+
+const boundHandler = button.handleClick.bind(otherButton);
+boundHandler(); // Clicked: Cancel
+```
+
+`bind` returns a new function with `this` permanently set to the provided object.
+
+```js
+function greet(greeting) {
+  console.log(`${greeting}, ${this.name}`);
+}
+
+const user = { name: 'Alice' };
+greet.call(user, 'Hi');           // Hi, Alice
+greet.apply(user, ['Hello']);    // Hello, Alice
+```
+
+- `call(thisArg, ...args)` invokes the function immediately with explicit `this` and arguments.
+- `apply(thisArg, argsArray)` invokes immediately with `this` and an array of arguments.
+- `bind(thisArg, ...args)` returns a new function with `this` bound and optional initial arguments.
+
+Browser callbacks often rely on these methods for correct `this` handling.
+
+```js
+const btn = document.querySelector('button');
+
+const handler = function (event) {
+  console.log(this.id, event.type);
+}.bind(btn);
+
+btn.addEventListener('click', handler);
+```
+
+A common browser-style helper is `on` for event binding:
+
+```js
+function on(element, eventName, listener) {
+  element.addEventListener(eventName, listener);
+}
+
+on(btn, 'click', () => console.log('clicked'));
+```
+
+These patterns are useful when working with DOM events, callbacks, and method borrowing between objects.
+
 ---
 
 ## 5. Objects and Prototypes
@@ -219,9 +400,69 @@ class Person {
     console.log(`Hi, ${this.name}`);
   }
 }
+
+const p = new Person('Sara');
+p.greet();
 ```
 
 Classes are syntactic sugar over prototypes.
+
+### 5.5 Prototype chain
+
+Every JavaScript object can delegate property access to its prototype. This creates a chain of objects used during lookup.
+
+```js
+const animal = {
+  speak() {
+    console.log('sound');
+  }
+};
+
+const dog = Object.create(animal);
+dog.bark = () => console.log('woof');
+
+dog.speak(); // delegates to animal.speak
+console.log(Object.getPrototypeOf(dog) === animal); // true
+```
+
+With property lookup, the runtime checks the object first and then walks its prototype chain.
+
+```js
+console.log(dog.hasOwnProperty('bark'));  // true
+console.log(dog.hasOwnProperty('speak')); // false
+```
+
+Use `Object.getPrototypeOf(obj)` instead of `__proto__` for portability.
+
+### 5.6 Prototype-based sharing and inheritance
+
+Constructor functions and classes both share methods via `prototype`.
+
+```js
+function Person(name) {
+  this.name = name;
+}
+
+Person.prototype.greet = function () {
+  console.log(`Hi, ${this.name}`);
+};
+
+const p = new Person('Sam');
+p.greet();
+
+// This is equivalent to:
+class PersonClass {
+  constructor(name) {
+    this.name = name;
+  }
+
+  greet() {
+    console.log(`Hi, ${this.name}`);
+  }
+}
+```
+
+If you need shared behavior across objects, attach methods to the prototype rather than creating them per-instance.
 
 ---
 

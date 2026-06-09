@@ -137,6 +137,21 @@ def apply(func, value):
 apply(lambda x: x + 1, 4)
 ```
 
+### 3.5 Lambda expressions
+
+`lambda` creates a small anonymous function in a single expression.
+
+```python
+square = lambda x: x * x
+print(square(5))  # 25
+
+pairs = [(1, 2), (3, 4), (5, 6)]
+sorted_pairs = sorted(pairs, key=lambda pair: pair[1])
+print(sorted_pairs)
+```
+
+Use lambda expressions for short throwaway functions, especially with `map`, `filter`, and `sorted`.
+
 ---
 
 ## 4. Modules and Packages

@@ -58,6 +58,53 @@ int age = 30;
 string name = "Alice";
 double price = 19.99;
 bool isActive = true;
+const int MAX_COUT = 10;
+```
+
+`object` is the base type of all C# types.
+
+```csharp
+object value = 123;
+value = "hello";
+```
+
+`dynamic` bypasses compile-time type checking and resolves member calls at runtime.
+
+```csharp
+dynamic dyn = 10;
+dyn = dyn + 5;
+Console.WriteLine(dyn);
+```
+
+Use `dynamic` sparingly because it removes compile-time safety.
+
+### Boxing and unboxing
+
+When a value type is converted to `object` or an interface type, it is boxed: a heap object is created to hold the value.
+
+```csharp
+int n = 42;
+object boxed = n; // boxing
+int unboxed = (int)boxed; // unboxing
+```
+
+Boxing and unboxing are relatively expensive, so avoid them in hot paths.
+
+`readonly` is used on fields and structs to enforce immutability.
+
+```csharp
+public readonly struct Point
+{
+    public int X { get; }
+    public int Y { get; }
+    public Point(int x, int y) => (X, Y) = (x, y);
+}
+
+public class Config
+{
+    public readonly string Name;
+    public Config(string name) => Name = name;
+}
 ```
 
 ### 1.4 Type inference
@@ -114,7 +161,249 @@ public class Dog : Animal
 }
 ```
 
-### 2.3 Interfaces
+### 2.3 Virtual methods and `base`
+
+Virtual methods enable derived classes to override behavior from a base class.
+
+```csharp
+public class BaseAnimal
+{
+    public BaseAnimal()
+    {
+        Console.WriteLine("BaseAnimal constructor");
+    }
+
+    static BaseAnimal()
+    {
+        Console.WriteLine("BaseAnimal static constructor");
+    }
+
+    public virtual void Speak()
+    {
+        Console.WriteLine("BaseAnimal speaks");
+    }
+}
+
+public class Dog : BaseAnimal
+{
+    public Dog()
+    {
+        Console.WriteLine("Dog constructor");
+    }
+
+    static Dog()
+    {
+        Console.WriteLine("Dog static constructor");
+    }
+
+    public override void Speak()
+    {
+        Console.WriteLine("Dog says woof");
+    }
+
+    public void SpeakAsBase()
+    {
+        base.Speak();
+    }
+}
+
+var dog = new Dog();
+// Static constructors run once before the first instance or static member access.
+// Output order:
+// BaseAnimal static constructor
+// Dog static constructor
+// BaseAnimal constructor
+// Dog constructor
+
+dog.Speak();        // Dog says woof
+
+dog.SpeakAsBase();  // BaseAnimal speaks
+```
+
+The `base` keyword calls the base class implementation from a derived class. It is useful when overriding a virtual method but still needing the base behavior.
+
+### 2.3.1 Method dispatch and inheritance
+
+When a virtual method is called on a reference, the runtime chooses the most-derived override available.
+
+```csharp
+public class Animal
+{
+    public virtual string GetSound() => "generic sound";
+}
+
+public class Cat : Animal
+{
+    public override string GetSound() => "meow";
+}
+
+public class PersianCat : Cat
+{
+    public override string GetSound() => "purr";
+}
+
+Animal animal = new PersianCat();
+Console.WriteLine(animal.GetSound()); // purr
+
+Cat cat = new PersianCat();
+Console.WriteLine(cat.GetSound());    // purr
+
+PersianCat pc = new PersianCat();
+Console.WriteLine(pc.GetSound());     // purr
+```
+
+If the base method is not virtual, the derived method hides it rather than overriding it.
+
+```csharp
+public class BaseLogger
+{
+    public void Log() => Console.WriteLine("Base log");
+}
+
+public class FileLogger : BaseLogger
+{
+    public new void Log() => Console.WriteLine("File log");
+}
+
+BaseLogger logger = new FileLogger();
+logger.Log(); // Base log
+```
+
+### 2.3.2 Constructor order in class inheritance
+
+In a class inheritance chain, constructors run from the top-most base class down to the most-derived class.
+
+```csharp
+public class Parent
+{
+    public Parent()
+    {
+        Console.WriteLine("Parent ctor");
+    }
+}
+
+public class Child : Parent
+{
+    public Child()
+    {
+        Console.WriteLine("Child ctor");
+    }
+}
+
+new Child();
+// Output:
+// Parent ctor
+// Child ctor
+```
+
+If a base constructor requires arguments, the derived constructor must explicitly call it with `: base(...)`.
+
+```csharp
+public class Base
+{
+    public Base(string name)
+    {
+        Console.WriteLine($"Base ctor {name}");
+    }
+}
+
+public class Derived : Base
+{
+    public Derived() : base("Derived")
+    {
+        Console.WriteLine("Derived ctor");
+    }
+}
+```
+
+### 2.3.3 Static constructors in non-static classes
+
+A non-static class can still have a static constructor. It runs once before any instance of the class is created or any static member is accessed.
+
+```csharp
+public class Example
+{
+    static Example()
+    {
+        Console.WriteLine("Example static ctor");
+    }
+
+    public Example()
+    {
+        Console.WriteLine("Example instance ctor");
+    }
+}
+
+new Example();
+// Output:
+// Example static ctor
+// Example instance ctor
+```
+
+Static constructors are useful for type initialization, such as creating static read-only data or registering metadata.
+
+### 2.3.4 `sealed` classes and members
+
+The `sealed` keyword prevents a class from being inherited or a virtual member from being overridden.
+
+```csharp
+public sealed class FinalLogger
+{
+    public void Log(string message) => Console.WriteLine(message);
+}
+
+public class BaseWriter
+{
+    public virtual void Write() => Console.WriteLine("Base");
+}
+
+public class SpecialWriter : BaseWriter
+{
+    public sealed override void Write() => Console.WriteLine("Special");
+}
+
+public class DerivedWriter : SpecialWriter
+{
+    // Cannot override Write() here because it is sealed in SpecialWriter.
+}
+```
+
+`sealed` helps enforce class hierarchies and avoid unintended overrides.
+
+### 2.3.5 Access modifiers and file scope
+
+C# access modifiers control visibility of types and members.
+
+- `public` - accessible from any code.
+- `private` - accessible only inside the containing type.
+- `protected` - accessible inside the containing type and derived types.
+- `internal` - accessible within the same assembly.
+- `protected internal` - accessible in the same assembly or in derived types.
+- `private protected` - accessible in derived types, but only within the same assembly.
+
+```csharp
+public class PublicClass
+{
+    private int _privateField;
+    protected int ProtectedValue;
+    internal void InternalMethod() { }
+    protected internal void ProtectedInternalMethod() { }
+    private protected void PrivateProtectedMethod() { }
+}
+```
+
+C# 11 introduced file-scoped types using the `file` modifier. A `file class` is visible only within the same source file.
+
+```csharp
+file class FileOnlyHelper
+{
+    public static void Help() => Console.WriteLine("Helper in same file");
+}
+```
+
+A file-scoped type is useful for implementation details that should not leak outside the source file.
+
+### 2.4 Interfaces
 
 ```csharp
 public interface ILogger
@@ -128,7 +417,64 @@ public class ConsoleLogger : ILogger
 }
 ```
 
-### 2.4 Records
+### 2.4 Method ambiguity
+
+Method ambiguity in C# occurs when the compiler cannot determine which method overload or implementation to call. This is always a compile-time error, because the compiler resolves overloads and interface implementations before the program runs.
+
+Common ambiguity scenarios:
+
+- Overloads with the same name and arguments that match multiple parameter sets.
+- Interfaces exposing the same method names where the implementing class must disambiguate.
+- Multiple methods with the same name and signature in the same type or inheritance chain.
+
+Example of overload ambiguity:
+
+```csharp
+void Write(int value) { }
+void Write(string value) { }
+
+Write(42);
+Write("hello");
+
+// This is ambiguous if both overloads can accept null:
+Write(null); // compile-time error
+```
+
+Example with interfaces and explicit implementation:
+
+```csharp
+interface IReader { void Read(); }
+interface IWriter { void Read(); }
+
+class FileHandler : IReader, IWriter
+{
+    void IReader.Read() => Console.WriteLine("Reader");
+    void IWriter.Read() => Console.WriteLine("Writer");
+}
+```
+
+If the compiler cannot choose between candidates, it reports an error rather than producing runtime ambiguity.
+
+### 2.5 Interface default implementations
+
+C# lets interfaces provide a default implementation for methods. This helps evolve interfaces without breaking existing implementers.
+
+```csharp
+public interface ILogger
+{
+    void Log(string message);
+    void LogVerbose(string message) => Log($"VERBOSE: {message}");
+}
+
+public class ConsoleLogger : ILogger
+{
+    public void Log(string message) => Console.WriteLine(message);
+}
+```
+
+Implementing types can override the default method, but they do not have to.
+
+### 2.6 Records
 
 Records are useful for immutable data.
 
@@ -151,6 +497,45 @@ public class Repository<T>
 }
 ```
 
+Generic constraints limit what types are allowed for a type parameter.
+
+```csharp
+public class Factory<T> where T : new()
+{
+    public T Create() => new T();
+}
+
+public class NullableHolder<T> where T : class
+{
+    public T? Value { get; set; }
+}
+
+public class ValueHolder<T> where T : struct
+{
+    public T Value { get; set; }
+}
+```
+
+Common generic constraints:
+
+- `where T : class` - `T` must be a reference type.
+- `where T : struct` - `T` must be a non-nullable value type.
+- `where T : new()` - `T` must have a public parameterless constructor.
+- `where T : SomeBase` - `T` must derive from `SomeBase`.
+- `where T : ISomeInterface` - `T` must implement `ISomeInterface`.
+- `where T : notnull` - `T` cannot be nullable.
+
+The `default` expression returns the default value for a type parameter.
+
+```csharp
+public static T GetDefault<T>() => default;
+
+Console.WriteLine(GetDefault<int>());    // 0
+Console.WriteLine(GetDefault<string>()); //
+```
+
+For a value type, `default` is the zeroed value. For a reference type, `default` is `null`.
+
 ### 3.2 Collection types
 
 Common collections:
@@ -169,6 +554,80 @@ var numbers = new[] { 1, 2, 3, 4, 5 };
 var evens = numbers.Where(n => n % 2 == 0).ToList();
 var sum = numbers.Sum();
 ```
+
+### 3.4 IList vs ICollection
+
+- `ICollection<T>` provides size, enumeration, add/remove operations, and support for collection semantics.
+- `IList<T>` extends `ICollection<T>` with indexed access and insert/remove at a specific position.
+
+Use `ICollection<T>` when you need collection semantics without random access. Use `IList<T>` when order and indexing matter.
+
+```csharp
+void ProcessCollection(ICollection<string> items)
+{
+    foreach (var item in items)
+    {
+        Console.WriteLine(item);
+    }
+}
+
+void UpdateList(IList<string> items)
+{
+    items.Insert(0, "first");
+    Console.WriteLine(items[0]);
+}
+```
+
+### 3.5 IEnumerable vs IEnumerator
+
+- `IEnumerable<T>` exposes an enumerator and supports `foreach` iteration.
+- `IEnumerator<T>` represents the actual iteration state and current value.
+
+`IEnumerable<T>` is the common abstraction for data sources. `IEnumerator<T>` is typically used by the runtime or for custom iteration routines.
+
+```csharp
+IEnumerable<int> GetNumbers() => new[] { 1, 2, 3 };
+
+using var enumerator = GetNumbers().GetEnumerator();
+while (enumerator.MoveNext())
+{
+    Console.WriteLine(enumerator.Current);
+}
+```
+
+### 3.6 Read-only, frozen, and immutable collections
+
+- `IReadOnlyCollection<T>` and `IReadOnlyList<T>` expose read-only collection views.
+- `ReadOnlyCollection<T>` wraps an existing list to prevent mutation through its API.
+- Immutable collections in `System.Collections.Immutable` provide truly immutable data structures.
+
+```csharp
+IReadOnlyList<int> readOnly = new List<int> { 1, 2, 3 };
+var frozen = new ReadOnlyCollection<int>(new List<int> { 1, 2, 3 });
+
+using System.Collections.Immutable;
+var immutable = ImmutableList.Create(1, 2, 3);
+var added = immutable.Add(4); // returns a new list
+```
+
+Use read-only views when you want to prevent consumer modification and immutable collections when you want no mutation at all.
+
+### 3.7 Concurrent collections
+
+The `System.Collections.Concurrent` namespace provides thread-safe collection types.
+
+- `ConcurrentDictionary<TKey, TValue>`
+- `ConcurrentQueue<T>`
+- `ConcurrentStack<T>`
+- `BlockingCollection<T>`
+
+```csharp
+var dict = new ConcurrentDictionary<string, int>();
+dict.TryAdd("a", 1);
+dict.AddOrUpdate("a", 1, (_, existing) => existing + 1);
+```
+
+Use these collections for shared data structures in multithreaded applications.
 
 ---
 
@@ -239,6 +698,97 @@ public class Clock
 var squares = numbers.Select(n => n * n).ToList();
 ```
 
+### 5.4 `ref`, `out`, and `in` parameter modifiers
+
+C# supports parameter modifiers for passing by reference or enforcing readonly semantics.
+
+```csharp
+void Increment(ref int value)
+{
+    value += 1;
+}
+
+void LoadValue(out int result)
+{
+    result = 42;
+}
+
+void PrintPoint(in Point point)
+{
+    Console.WriteLine($"{point.X}, {point.Y}");
+}
+
+int a = 5;
+Increment(ref a);   // a is initialized and updated
+
+int b;
+LoadValue(out b);    // b does not need to be initialized before the call
+
+var p = new Point { X = 1, Y = 2 };
+PrintPoint(in p);    // p is passed by readonly reference
+```
+
+- `ref` passes a variable by reference and allows the method to read/write the caller's storage. The variable must be initialized before calling.
+- `out` passes by reference for output-only values. The caller's variable need not be initialized, but the method must assign it before returning.
+- `in` passes by readonly reference. It avoids copying large value types while preventing modification inside the method.
+
+You can also use `ref` locals and returns to work with references directly:
+
+```csharp
+int[] values = { 10, 20, 30 };
+ref int second = ref values[1];
+second = 50; // updates values[1]
+
+ref int GetReference(int[] arr, int index)
+{
+    return ref arr[index];
+}
+
+ref int item = ref GetReference(values, 2);
+item = 60; // updates values[2]
+```
+
+Use these modifiers when you need direct access to caller storage, want to return mutable references, or wish to avoid copies of large structs.
+
+### 5.5 Closures
+
+C# closures capture variables from the surrounding scope, including loop variables.
+
+```csharp
+Action?[] actions = new Action?[3];
+for (int i = 0; i < 3; i++)
+{
+    int copy = i;
+    actions[i] = () => Console.WriteLine(copy);
+}
+
+foreach (var action in actions)
+{
+    action?.Invoke();
+}
+```
+
+This prints `0`, `1`, `2` because each closure captures its own copy of the variable.
+
+### 5.6 Why extension methods are static
+
+Extension methods are static because they are syntactic sugar for calling a static helper method with the target instance as the first parameter. They allow adding methods to existing types without inheritance.
+
+```csharp
+public static class StringExtensions
+{
+    public static bool IsNullOrEmpty(this string? value)
+    {
+        return string.IsNullOrEmpty(value);
+    }
+}
+
+string? text = null;
+Console.WriteLine(text.IsNullOrEmpty());
+```
+
+Behind the scenes, the call compiles to `StringExtensions.IsNullOrEmpty(text)`.
+
 ---
 
 ## 6. Advanced Language Features
@@ -307,6 +857,43 @@ For low-level atomic operations:
 Interlocked.Increment(ref counter);
 ```
 
+### 7.5 Race conditions
+
+A race condition occurs when multiple threads access shared state without proper synchronization, and the result depends on execution order.
+
+```csharp
+int counter = 0;
+Parallel.For(0, 1000, _ =>
+{
+    counter++; // not thread-safe
+});
+```
+
+The increment is not atomic, so the final value may be less than 1000.
+
+### 7.6 Thread synchronization
+
+Common synchronization primitives:
+
+- `lock` — protects critical sections
+- `Monitor` — advanced locking
+- `Mutex` — cross-process lock
+- `SemaphoreSlim` — limits concurrency
+- `ManualResetEventSlim` — wait signal
+
+Example:
+
+```csharp
+private readonly object _lock = new();
+
+lock (_lock)
+{
+    // critical section
+}
+```
+
+Use synchronization when threads share mutable state.
+
 ---
 
 ## 8. Async/Await and Asynchronous Programming
@@ -366,6 +953,21 @@ public async ValueTask<int> GetValueAsync()
 - Use `Span<T>` for stack-based slicing
 - Prefer `string.Create` over concatenation in hot paths
 
+### 9.1.1 Memory management in C#
+
+.NET uses managed memory and a garbage collector. Objects are allocated on the managed heap, and the runtime periodically reclaims unreachable memory.
+
+- Small objects are allocated in generation 0.
+- Long-lived objects are promoted to higher generations.
+- `IDisposable` is used for unmanaged resources and should be released with `using`.
+- `GC.Collect()` can be invoked manually, but it is usually best left to the runtime.
+
+```csharp
+using var stream = File.OpenRead("data.txt");
+```
+
+Minimize allocations, keep objects short-lived when possible, and prefer value types for small data when appropriate.
+
 ### 9.2 Use `readonly struct`
 
 For small value types that should not mutate.
@@ -377,6 +979,20 @@ public readonly struct Point
     public int Y { get; }
 }
 ```
+
+`readonly struct` makes all instance fields readonly and prevents mutation through its instance members. It is ideal for small immutable value types.
+
+A regular `struct` can also have individual readonly members:
+
+```csharp
+public struct Rectangle
+{
+    public readonly int Width;
+    public readonly int Height;
+}
+```
+
+This is not the same as `readonly struct`; it only protects those fields, not all instance members.
 
 ### 9.3 Use `in` parameters
 
@@ -429,7 +1045,15 @@ public async IAsyncEnumerable<int> CountAsync()
 }
 ```
 
-### 10.4 Cancellation
+### 10.4 Task parallelism vs multithreading vs the Parallel class
+
+- **Multithreading** is the general concept of running multiple threads in parallel, which can be managed directly with `Thread` or thread-pool abstractions.
+- **Task parallelism** uses `Task`, `Task<T>`, and the task scheduler to represent asynchronous or concurrent work, often with higher-level coordination and better exception handling.
+- **`Parallel`** methods like `Parallel.For` and `Parallel.ForEach` are built on the thread pool and optimized for data-parallel workloads.
+
+Use `Task` for asynchronous and potentially non-CPU-bound operations. Use `Parallel` when you have a CPU-bound loop or batch that can be executed in parallel across multiple cores.
+
+### 10.5 Cancellation
 
 Use `CancellationToken` to stop work cooperatively.
 
