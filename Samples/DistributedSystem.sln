@@ -16,6 +16,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DistributedSystem.BloomFilt
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DistributedSystem.GossipProtocol", "DistributedSystem.GossipProtocol\DistributedSystem.GossipProtocol.csproj", "{58D83B49-74D8-33DE-148F-7D99758946F1}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DistributedSystem.Paxos", "DistributedSystem.Paxos\DistributedSystem.Paxos.csproj", "{D412EBFE-7E25-49F1-9582-B2C262D527A6}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DistributedSystem.Crdt", "DistributedSystem.Crdt\DistributedSystem.Crdt.csproj", "{3B794D82-F6B1-4505-8806-180693701620}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -50,6 +54,14 @@ Global
 		{58D83B49-74D8-33DE-148F-7D99758946F1}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{58D83B49-74D8-33DE-148F-7D99758946F1}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{58D83B49-74D8-33DE-148F-7D99758946F1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D412EBFE-7E25-49F1-9582-B2C262D527A6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D412EBFE-7E25-49F1-9582-B2C262D527A6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D412EBFE-7E25-49F1-9582-B2C262D527A6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D412EBFE-7E25-49F1-9582-B2C262D527A6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3B794D82-F6B1-4505-8806-180693701620}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3B794D82-F6B1-4505-8806-180693701620}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3B794D82-F6B1-4505-8806-180693701620}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3B794D82-F6B1-4505-8806-180693701620}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
