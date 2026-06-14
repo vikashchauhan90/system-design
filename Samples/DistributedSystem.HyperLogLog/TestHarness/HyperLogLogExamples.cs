@@ -1,7 +1,4 @@
-using System.Diagnostics;
-using DistributedSystem.BloomFilter;
-
-namespace DistributedSystem.HyperLogLog;
+namespace DistributedSystem.HyperLogLog.TestHarness;
 
 /// <summary>
 /// HyperLogLog examples demonstrating cardinality estimation for distributed systems.
@@ -313,27 +310,6 @@ public static class HyperLogLogExamples
             var userId = $"user-{i % 1000}";
             requests.Add(userId);
             userSet.Add(userId);
-        }
-
-        // Bloom Filter - "Should we log this request?"
-        var bloomFilter = BloomFilter.CreateOptimal(1000, 0.01);
-        var bannedUsers = new[] { "user-999", "user-500", "user-123" };
-        foreach (var banned in bannedUsers)
-        {
-            bloomFilter.Add(banned);
-        }
-
-        Console.WriteLine("Bloom Filter Check (are users in ban list?):");
-        foreach (var userId in new[] { "user-100", "user-500", "user-1000" })
-        {
-            if (bloomFilter.MightContain(userId))
-            {
-                Console.WriteLine($"  {userId}: might be banned - investigate");
-            }
-            else
-            {
-                Console.WriteLine($"  {userId}: definitely not banned - allow");
-            }
         }
 
         Console.WriteLine();

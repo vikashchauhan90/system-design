@@ -209,7 +209,7 @@ public sealed class BloomFilter
     {
         var buffer = new byte[1 + 1 + _bits.Length];
         buffer[0] = (byte)_hashFunctions;
-        buffer[1] = (byte)(Math.Log2(Size) & 0xFF);
+        buffer[1] = (byte)((int)Math.Log2(Size) & 0xFF);
         Array.Copy(_bits, 0, buffer, 2, _bits.Length);
         return buffer;
     }

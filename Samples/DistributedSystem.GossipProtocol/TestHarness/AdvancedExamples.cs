@@ -1,6 +1,6 @@
 using DistributedSystem.GossipProtocol;
 
-namespace GossipProtocolAdvanced;
+namespace DistributedSystem.GossipProtocol.TestHarness;
 
 /// <summary>
 /// Advanced Gossip Protocol scenarios

@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using DistributedSystem.BloomFilter;
 
-namespace BloomFilterExamples;
+namespace DistributedSystem.BloomFilter.TestHarness;
 
 /// <summary>
 /// Examples and tests demonstrating Bloom Filter usage for log compaction and other scenarios.

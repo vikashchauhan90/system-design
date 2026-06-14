@@ -12,6 +12,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DistributedSystem.HyperLogL
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DistributedSystem.2PC", "DistributedSystem.2PC\DistributedSystem.2PC.csproj", "{55BBC9CF-E1D1-4752-9C4B-B68DFD3F5DCE}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DistributedSystem.BloomFilter", "DistributedSystem.BloomFilter\DistributedSystem.BloomFilter.csproj", "{C8B2299B-065A-4461-07A7-75EDAC171172}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DistributedSystem.GossipProtocol", "DistributedSystem.GossipProtocol\DistributedSystem.GossipProtocol.csproj", "{58D83B49-74D8-33DE-148F-7D99758946F1}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -38,6 +42,14 @@ Global
 		{55BBC9CF-E1D1-4752-9C4B-B68DFD3F5DCE}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{55BBC9CF-E1D1-4752-9C4B-B68DFD3F5DCE}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{55BBC9CF-E1D1-4752-9C4B-B68DFD3F5DCE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C8B2299B-065A-4461-07A7-75EDAC171172}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C8B2299B-065A-4461-07A7-75EDAC171172}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C8B2299B-065A-4461-07A7-75EDAC171172}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C8B2299B-065A-4461-07A7-75EDAC171172}.Release|Any CPU.Build.0 = Release|Any CPU
+		{58D83B49-74D8-33DE-148F-7D99758946F1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{58D83B49-74D8-33DE-148F-7D99758946F1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{58D83B49-74D8-33DE-148F-7D99758946F1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{58D83B49-74D8-33DE-148F-7D99758946F1}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
