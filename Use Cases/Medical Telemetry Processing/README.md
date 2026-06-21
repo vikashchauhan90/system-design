@@ -228,6 +228,193 @@ Update patient state + persist to DB
 
 ---
 
+Got it — I’ll incorporate **DotNetty + KEDA scaling based on CPU/memory + TCP port utilization** into the architecture and clearly indicate *where it fits*, so you can update your document cleanly.
+
+---
+
+
+
+## 8 High-Throughput Ingestion Layer (DotNetty + KEDA Scaling)
+
+### 8.1 Purpose
+
+To handle **massive-scale TCP telemetry ingestion** from infusion pump devices, we introduce a dedicated **high-performance network ingestion layer** built using:
+
+* **DotNetty (high-performance .NET TCP framework)**
+* **KEDA (Kubernetes Event-Driven Autoscaling)**
+
+This layer is responsible for:
+
+* Managing **large-scale persistent TCP connections from devices**
+* Efficiently receiving high-frequency telemetry streams
+* Scaling ingestion dynamically based on real system load
+
+---
+
+## 8.2 DotNetty-Based TCP Ingestion Layer
+
+### Why DotNetty?
+
+We use DotNetty because:
+
+* Supports **high-performance asynchronous TCP communication**
+* Handles **thousands to millions of concurrent connections**
+* Low GC pressure and event-loop based architecture
+* Suitable for **long-lived medical device connections**
+
+---
+
+### Responsibilities of DotNetty Layer:
+
+* Maintain persistent TCP connections with infusion pumps
+* Receive telemetry + log streams in real-time
+* Perform lightweight validation (schema + tenant header)
+* Forward normalized events to ingestion gateway → Kafka
+
+---
+
+### Flow:
+
+```text id="dotnetty_flow"
+Infusion Pumps (TCP Devices)
+        ↓
+DotNetty TCP Gateway
+        ↓
+Lightweight validation (tenant/device)
+        ↓
+Event normalization
+        ↓
+Kafka ingestion pipeline
+```
+
+---
+
+## 6.X.3 KEDA-Based Auto-Scaling Strategy
+
+We use **KEDA (Kubernetes Event Driven Autoscaling)** to dynamically scale ingestion services.
+
+---
+
+### Scaling Triggers:
+
+KEDA scales DotNetty ingestion pods based on:
+
+### 1. CPU Utilization
+
+* High CPU → increase ingestion pods
+* Low CPU → scale down
+
+---
+
+### 2. Memory Utilization
+
+* Prevent memory saturation from TCP buffers
+* Ensures stable connection handling
+
+---
+
+### 3. TCP Connection Load (Custom Metric)
+
+* Number of active TCP connections per pod
+* Helps scale based on **real device traffic load**
+
+---
+
+### 4. Kafka Lag (Backpressure Signal)
+
+* If Kafka lag increases → ingestion is saturated
+* Trigger scale-out automatically
+
+---
+
+## 6.X.4 System-Level Flow with DotNetty + KEDA
+
+```text id="scaled_ingestion_flow"
+Infusion Pumps
+     ↓
+DotNetty TCP Layer (Auto-scaled by KEDA)
+     ↓
+Ingestion Gateway
+     ↓
+Kafka (partitioned by patientId)
+     ↓
+Actor Consumers
+     ↓
+Database / State Store
+```
+
+---
+
+## 6.X.5 Key Benefits of This Addition
+
+### 1. High Connection Scalability
+
+* Supports **10K–100K+ concurrent TCP device connections**
+
+---
+
+### 2. Real-Time Ingestion Stability
+
+* No packet loss due to backpressure-aware scaling
+
+---
+
+### 3. Adaptive Resource Scaling
+
+* Automatically scales based on:
+
+  * CPU
+  * Memory
+  * TCP load
+  * Kafka backlog
+
+---
+
+### 4. Better Separation of Concerns
+
+* DotNetty = connection management
+* Kafka = event backbone
+* Actors = processing logic
+
+---
+
+## 6.X.6 Trade-offs Introduced
+
+| Trade-off                 | Explanation                                              |
+| ------------------------- | -------------------------------------------------------- |
+| Operational complexity    | Requires managing TCP + Kubernetes + KEDA together       |
+| Debugging difficulty      | Harder to trace TCP → Kafka → actor flow                 |
+| Resource tuning overhead  | Requires careful CPU/memory/KEDA threshold tuning        |
+| Connection state handling | Long-lived TCP connections require robust recovery logic |
+
+---
+
+## 6.X.7 Failure Handling Additions
+
+### 1. DotNetty Node Failure
+
+* TCP connections are rebalanced to other nodes
+* Devices reconnect automatically
+
+---
+
+### 2. KEDA Mis-scaling Risk
+
+* Over-scaling → cost overhead
+* Under-scaling → latency spikes
+* Mitigated using multi-metric scaling strategy
+
+---
+
+### 3. TCP Burst Traffic
+
+* Backpressure applied at ingestion layer
+* Kafka acts as buffer to prevent data loss
+
+---
+
+
+
 ## 8. Failure Handling Strategy
 
 ---
