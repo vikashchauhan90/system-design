@@ -13,9 +13,9 @@ The system manages **infusion pumps (~10K per hospital)** that:
 * Emit logs and operational events
 * May be reassigned across patients over time
 
-A key requirement is to ensure that:
+A key requirement is:
 
-> All telemetry, logs, and configuration events are correctly correlated to the **current patient context**, even when device assignment changes dynamically.
+> All telemetry, logs, and configuration events must be correctly correlated to the **current patient context**, even when device assignment changes dynamically.
 
 ---
 
@@ -24,11 +24,11 @@ A key requirement is to ensure that:
 ### 2.1 Observed Challenges
 
 * High-volume telemetry ingestion from thousands of devices per tenant
-* Device-to-patient mapping changes frequently (device reassignment problem)
+* Device-to-patient mapping changes frequently (reassignment problem)
 * Risk of **data misassociation across patients over time**
-* Need for strict tenant-level isolation (no cross-tenant leakage)
-* Requirement to preserve ordering and consistency of device events per patient
-* Requirement to support near real-time processing of telemetry streams
+* Strict tenant-level isolation required (no cross-tenant leakage)
+* Need to preserve ordering and consistency per patient
+* Near real-time telemetry processing required
 
 ---
 
@@ -42,11 +42,11 @@ A key requirement is to ensure that:
 
    * Same device can serve different patients over time
 
-3. **Strong requirement for contextual correctness**
+3. **Context-sensitive correctness requirement**
 
-   * Data must be grouped by patient context, not just device ID
+   * Data must be grouped by patient, not device
 
-4. **Need for scalable ingestion system**
+4. **High scalability requirement**
 
    * Millions of events per day across tenants
 
@@ -54,13 +54,11 @@ A key requirement is to ensure that:
 
 ## 3. Design Goals
 
-The system must:
-
 * Ensure strict **tenant isolation**
-* Maintain **correct patient-level event grouping**
+* Maintain **correct patient-level grouping**
 * Handle **high-throughput telemetry ingestion**
-* Preserve event ordering for a given patient context
-* Support dynamic device reassignment safely
+* Preserve ordering per patient context
+* Support safe device reassignment
 * Prevent data loss in streaming pipeline
 * Scale horizontally across tenants and devices
 
@@ -68,56 +66,29 @@ The system must:
 
 ## 4. Proposed Solution
 
-### 4.1 High-Level Approach
-
-We use a combination of:
+We use:
 
 * **Apache Kafka for event streaming**
 * **Patient-based partitioning strategy**
 * **Actor-based consumer processing model**
-* **Stateful mapping service for device-to-patient resolution**
-
-This ensures:
-
-> All telemetry events belonging to a patient are processed in-order and together, even if device assignments change over time.
+* **Stateful device-to-patient mapping service**
 
 ---
 
 ## 5. Architecture Overview
 
-```text id="med_arch_v1"
-      +----------------------------+
-      | Infusion Pump Devices     |
-      | (Telemetry + Logs)        |
-      +-------------+--------------+
-                    |
-                    v
-        +------------------------+
-        | Ingestion Gateway      |
-        | (Tenant Resolver)      |
-        +-----------+------------+
-                    |
-                    v
-        +------------------------+
-        | Kafka Event Stream     |
-        | Partitioned by         |
-        | patientId              |
-        +-----------+------------+
-                    |
-     -----------------------------------
-     |               |                 |
-     v               v                 v
-+---------+    +---------+      +---------+
-| Actor 1 |    | Actor 2 |      | Actor 3 |
-| Patient |    | Patient |      | Patient |
-| Group   |    | Group   |      | Group   |
-+---------+    +---------+      +---------+
-     |
-     v
-+---------------------------+
-| Patient State Database    |
-| + Device Mapping Store    |
-+---------------------------+
+```text
+Infusion Pump Devices
+        ↓
+Ingestion Layer (DotNetty + KEDA Autoscaling)
+        ↓
+Ingestion Gateway (Tenant Resolver + Validation)
+        ↓
+Kafka Event Stream (Partitioned by patientId)
+        ↓
+Actor-Based Consumers
+        ↓
+Patient State Database + Device Mapping Store
 ```
 
 ---
@@ -130,7 +101,7 @@ This ensures:
 
 Kafka topics are partitioned by:
 
-```text id="kafka_partition"
+```
 patientId
 ```
 
@@ -138,7 +109,7 @@ patientId
 
 * Ensures all events for a patient go to the same partition
 * Guarantees ordering per patient
-* Handles device reassignment safely by remapping at ingestion layer
+* Handles device reassignment safely via ingestion-layer mapping
 
 ---
 
@@ -152,7 +123,7 @@ A centralized state store maintains:
 
 Example:
 
-```json id="device_mapping"
+```json
 {
   "deviceId": "D001",
   "tenantId": "T100",
@@ -162,358 +133,179 @@ Example:
 }
 ```
 
-This ensures:
-
-* historical correctness
-* time-bound association
-* safe reassignment
-
 ---
 
 ### 6.3 Actor-Based Consumer Model
 
-Each Kafka partition is consumed by an **actor instance per patient group**.
+Each Kafka partition is consumed by an **actor representing a patient group**.
 
 Actors:
 
-* maintain in-memory patient state
-* process events sequentially
-* avoid concurrency conflicts
-* update database deterministically
+* Maintain in-memory patient state
+* Process events sequentially
+* Avoid concurrency issues
+* Ensure deterministic processing
 
 ---
 
 ### 6.4 Event Flow
 
-```text id="event_flow_med"
+```text
 Pump generates telemetry
    ↓
-Ingestion Gateway resolves tenant + patient mapping
+Ingestion Layer resolves tenant + patient mapping
    ↓
-Attach patientId to event
+Attach patientId
    ↓
 Publish to Kafka (partitioned by patientId)
    ↓
-Actor consumes partition
+Actor consumes events
    ↓
-Update patient state + persist to DB
+Update state + persist to DB
 ```
 
 ---
 
-## 7. Key Design Principles
-
-### 7.1 Tenant Isolation
-
-* Each tenant has separate logical data streams
-* No cross-tenant event sharing in Kafka partitions
-* Separate namespaces for tenant topics (optional)
+## 7. High-Throughput Ingestion Layer (DotNetty + KEDA)
 
 ---
 
-### 7.2 Patient-Centric Partitioning
+### 7.1 Purpose
 
-* Ensures all related telemetry is grouped
-* Maintains strict ordering per patient
-* Avoids interleaving device reassignment issues
+To handle **massive-scale TCP telemetry ingestion**, we use:
 
----
-
-### 7.3 Actor Model Benefits
-
-* Single-threaded processing per patient group
-* Eliminates race conditions
-* Simplifies state management
-* Enables deterministic processing
+* **DotNetty** → high-performance TCP framework
+* **KEDA** → Kubernetes autoscaling based on workload
 
 ---
 
-Got it — I’ll incorporate **DotNetty + KEDA scaling based on CPU/memory + TCP port utilization** into the architecture and clearly indicate *where it fits*, so you can update your document cleanly.
+### 7.2 DotNetty-Based TCP Layer
+
+Responsibilities:
+
+* Maintain persistent TCP connections
+* Handle high-throughput device telemetry
+* Perform lightweight validation
+* Forward normalized events downstream
 
 ---
 
+Flow:
 
-
-## 8 High-Throughput Ingestion Layer (DotNetty + KEDA Scaling)
-
-### 8.1 Purpose
-
-To handle **massive-scale TCP telemetry ingestion** from infusion pump devices, we introduce a dedicated **high-performance network ingestion layer** built using:
-
-* **DotNetty (high-performance .NET TCP framework)**
-* **KEDA (Kubernetes Event-Driven Autoscaling)**
-
-This layer is responsible for:
-
-* Managing **large-scale persistent TCP connections from devices**
-* Efficiently receiving high-frequency telemetry streams
-* Scaling ingestion dynamically based on real system load
-
----
-
-## 8.2 DotNetty-Based TCP Ingestion Layer
-
-### Why DotNetty?
-
-We use DotNetty because:
-
-* Supports **high-performance asynchronous TCP communication**
-* Handles **thousands to millions of concurrent connections**
-* Low GC pressure and event-loop based architecture
-* Suitable for **long-lived medical device connections**
-
----
-
-### Responsibilities of DotNetty Layer:
-
-* Maintain persistent TCP connections with infusion pumps
-* Receive telemetry + log streams in real-time
-* Perform lightweight validation (schema + tenant header)
-* Forward normalized events to ingestion gateway → Kafka
-
----
-
-### Flow:
-
-```text id="dotnetty_flow"
-Infusion Pumps (TCP Devices)
-        ↓
-DotNetty TCP Gateway
-        ↓
-Lightweight validation (tenant/device)
-        ↓
-Event normalization
-        ↓
-Kafka ingestion pipeline
-```
-
----
-
-## 6.X.3 KEDA-Based Auto-Scaling Strategy
-
-We use **KEDA (Kubernetes Event Driven Autoscaling)** to dynamically scale ingestion services.
-
----
-
-### Scaling Triggers:
-
-KEDA scales DotNetty ingestion pods based on:
-
-### 1. CPU Utilization
-
-* High CPU → increase ingestion pods
-* Low CPU → scale down
-
----
-
-### 2. Memory Utilization
-
-* Prevent memory saturation from TCP buffers
-* Ensures stable connection handling
-
----
-
-### 3. TCP Connection Load (Custom Metric)
-
-* Number of active TCP connections per pod
-* Helps scale based on **real device traffic load**
-
----
-
-### 4. Kafka Lag (Backpressure Signal)
-
-* If Kafka lag increases → ingestion is saturated
-* Trigger scale-out automatically
-
----
-
-## 6.X.4 System-Level Flow with DotNetty + KEDA
-
-```text id="scaled_ingestion_flow"
-Infusion Pumps
-     ↓
-DotNetty TCP Layer (Auto-scaled by KEDA)
-     ↓
+```text
+Devices (TCP)
+   ↓
+DotNetty Gateway
+   ↓
+Validation Layer
+   ↓
 Ingestion Gateway
-     ↓
-Kafka (partitioned by patientId)
-     ↓
-Actor Consumers
-     ↓
-Database / State Store
+   ↓
+Kafka
 ```
 
 ---
 
-## 6.X.5 Key Benefits of This Addition
+### 7.3 KEDA Scaling Strategy
 
-### 1. High Connection Scalability
+KEDA scales ingestion pods based on:
 
-* Supports **10K–100K+ concurrent TCP device connections**
-
----
-
-### 2. Real-Time Ingestion Stability
-
-* No packet loss due to backpressure-aware scaling
+* CPU utilization
+* Memory utilization
+* Active TCP connections
+* Kafka lag (backpressure signal)
 
 ---
 
-### 3. Adaptive Resource Scaling
+### 7.4 Benefits
 
-* Automatically scales based on:
-
-  * CPU
-  * Memory
-  * TCP load
-  * Kafka backlog
+* Handles 10K–100K+ TCP connections
+* Auto-scales based on real traffic
+* Prevents ingestion bottlenecks
+* Separates connection handling from processing
 
 ---
 
-### 4. Better Separation of Concerns
+### 7.5 Trade-offs
 
-* DotNetty = connection management
-* Kafka = event backbone
-* Actors = processing logic
-
----
-
-## 6.X.6 Trade-offs Introduced
-
-| Trade-off                 | Explanation                                              |
-| ------------------------- | -------------------------------------------------------- |
-| Operational complexity    | Requires managing TCP + Kubernetes + KEDA together       |
-| Debugging difficulty      | Harder to trace TCP → Kafka → actor flow                 |
-| Resource tuning overhead  | Requires careful CPU/memory/KEDA threshold tuning        |
-| Connection state handling | Long-lived TCP connections require robust recovery logic |
+* Operational complexity
+* Harder debugging across TCP → Kafka chain
+* Resource tuning required
+* Long-lived connection management overhead
 
 ---
 
-## 6.X.7 Failure Handling Additions
+### 7.6 Failure Handling
 
-### 1. DotNetty Node Failure
-
-* TCP connections are rebalanced to other nodes
-* Devices reconnect automatically
-
----
-
-### 2. KEDA Mis-scaling Risk
-
-* Over-scaling → cost overhead
-* Under-scaling → latency spikes
-* Mitigated using multi-metric scaling strategy
+* Node failure → connections rebalance
+* Burst traffic → backpressure via Kafka
+* Scaling misconfig → mitigated via multi-metric KEDA
 
 ---
-
-### 3. TCP Burst Traffic
-
-* Backpressure applied at ingestion layer
-* Kafka acts as buffer to prevent data loss
-
----
-
-
 
 ## 8. Failure Handling Strategy
 
 ---
 
-### 8.1 Device Reassignment Issue
+### 8.1 Device Reassignment
 
-**Problem:** Device switches from Patient A → Patient B
-
-**Solution:**
-
-* Mapping service updates association with timestamp
+* Mapping updated with timestamp
 * New events use updated mapping
-* Old events remain historically linked via event timestamp
+* Historical events preserved
 
 ---
 
-### 8.2 Kafka Lag or Consumer Failure
+### 8.2 Kafka Failures
 
-**Mitigation:**
-
-* Partition replay capability
-* Checkpoint-based recovery
-* Dead-letter queue for failed events
+* Replay from partitions
+* Dead-letter queue for failures
+* Checkpoint recovery
 
 ---
 
 ### 8.3 Actor Failure
 
-**Mitigation:**
-
-* Actor state rebuilt from Kafka replay
-* Persistent state store backup
-* Supervisor-based restart mechanism
+* State rebuilt via Kafka replay
+* Supervisor restarts actor
 
 ---
 
 ### 8.4 Data Loss Prevention
 
-**Mitigation:**
-
-* Kafka durability (replication factor > 3)
-* Acknowledged writes from ingestion layer
-* At-least-once delivery semantics
+* Kafka replication factor ≥ 3
+* At-least-once delivery
+* Acknowledged ingestion writes
 
 ---
 
 ## 9. Consistency Model
 
-| Component        | Consistency                        |
-| ---------------- | ---------------------------------- |
-| Kafka            | At-least-once delivery             |
-| Actor processing | Strong per-patient ordering        |
-| Device mapping   | Eventual consistency               |
-| Database writes  | Strong consistency per transaction |
+| Component        | Consistency                 |
+| ---------------- | --------------------------- |
+| Kafka            | At-least-once               |
+| Actor Processing | Strong per-patient ordering |
+| Mapping Service  | Eventual consistency        |
+| Database         | Strong consistency          |
 
 ---
 
 ## 10. Benefits
 
-### 10.1 Data Integrity
-
-* Ensures correct patient-level grouping
-* Prevents cross-patient data mixing
-
----
-
-### 10.2 Scalability
-
-* Kafka partitions scale horizontally
-* Actor model distributes processing load
-* Supports 10K+ devices per tenant
-
----
-
-### 10.3 Reliability
-
-* Fault-tolerant event processing
-* Replay capability ensures no data loss
-* Strong ordering guarantees per patient
-
----
-
-### 10.4 Observability
-
-* Per-patient event tracing
-* Tenant-level monitoring
-* Partition-level lag tracking
+* Correct patient-level grouping
+* No cross-patient data mixing
+* Horizontal scalability
+* Fault-tolerant processing
+* Replayable event system
 
 ---
 
 ## 11. Trade-offs
 
-| Trade-off                       | Explanation                                 |
-| ------------------------------- | ------------------------------------------- |
-| Increased system complexity     | Actor + Kafka + mapping layer               |
-| Eventual consistency in mapping | Device reassignment may lag briefly         |
-| Storage overhead                | Kafka retention + state storage duplication |
-| Operational overhead            | Requires monitoring partitions and actors   |
-| Debug complexity                | Requires distributed tracing across systems |
+* High system complexity
+* Eventual consistency in mapping
+* Storage overhead (Kafka + DB duplication)
+* Operational monitoring overhead
+* Distributed debugging complexity
 
 ---
 
@@ -521,37 +313,24 @@ Database / State Store
 
 ---
 
-### 12.1 Misrouting Due to Stale Mapping
+### 12.1 Stale Mapping Risk
 
-**Risk:** Event assigned to wrong patient temporarily
-
-**Mitigation:**
-
-* timestamp-based validation
-* correction events for reassignment
-* replay mechanism
+* Timestamp validation
+* Replay correction
 
 ---
 
 ### 12.2 Hot Partition Problem
 
-**Risk:** One patient generating too many events
-
-**Mitigation:**
-
-* dynamic partition scaling
-* partition key refinement (patient + device group if needed)
+* Partition monitoring
+* Adaptive partitioning strategy
 
 ---
 
 ### 12.3 Actor Overload
 
-**Risk:** Too many active patients per actor
-
-**Mitigation:**
-
-* horizontal actor scaling
-* partition reassignment strategy
+* Horizontal scaling
+* Partition reassignment
 
 ---
 
@@ -559,22 +338,21 @@ Database / State Store
 
 This system ensures:
 
-* strict tenant isolation
-* patient-level event consistency
-* scalable telemetry ingestion
-* safe device reassignment handling
-* reliable stream processing via Kafka + actor model
+* Tenant isolation
+* Patient-level correctness
+* High scalability
+* Reliable streaming ingestion
+* Safe device reassignment handling
 
 ---
 
 ## 14. Key Takeaway
 
-This architecture transforms a **high-volume medical telemetry system** into a:
+This architecture creates a:
 
-> patient-centric, event-driven, ordered stream processing platform that guarantees correctness, scalability, and tenant isolation even under dynamic device reassignment scenarios.
+> patient-centric, event-driven, highly scalable telemetry processing system with strict ordering, fault tolerance, and medical-grade correctness guarantees.
 
 ---
-
 
 
 # 🧠 Interview Follow-up Questions & Answers
