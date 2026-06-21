@@ -2,6 +2,9 @@
 
 A probabilistic data structure for estimating cardinality (distinct count) of very large datasets with minimal memory overhead.
 
+"How many unique items have I seen?"
+
+
 ## Overview
 
 HyperLogLog is a space-efficient probabilistic algorithm for approximating the number of distinct elements in a dataset. It uses only ~1.5 kilobytes of memory per HyperLogLog instance to estimate cardinalities up to billions of distinct elements with ~2% error.

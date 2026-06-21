@@ -2,6 +2,8 @@
 
 A space-efficient probabilistic data structure for testing set membership with no false negatives and configurable false positives.
 
+"Have I seen this item?"
+
 ## Overview
 
 A Bloom Filter is a probabilistic algorithm that answers the question "Is this element in the set?" with:
