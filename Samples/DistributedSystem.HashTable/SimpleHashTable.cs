@@ -181,12 +181,4 @@ public class SimpleHashTable : IEnumerable<KeyValuePair<string, byte[]?>>
     {
         return (key.GetHashCode() & 0x7FFFFFFF);
     }
-
-
-    private class Entity
-    {
-        public required string Key;
-        public byte[]? Value;
-        public Entity? next;
-    }
 }
