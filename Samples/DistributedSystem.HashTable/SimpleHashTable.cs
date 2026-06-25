@@ -12,7 +12,6 @@ public class SimpleHashTable : IEnumerable<KeyValuePair<string, byte[]?>>
     private Entity?[] _buckets;
 
     private bool Is75PercentFull => _filledIndex >= _buckets.Length * LOAD_FACTOR_THRESHOLD;
-
     public bool IsEmpty => _filledIndex == -1;
     public int Capacity => _capacity;
     public int Count => _count;
@@ -58,21 +57,40 @@ public class SimpleHashTable : IEnumerable<KeyValuePair<string, byte[]?>>
 
         int hash = GetHash(key);
         int bucketIndex = hash % _buckets.Length;
-        Entity? entity = _buckets[bucketIndex];
-        if (entity != null)
-        {
-            Entity? next = entity.next;
-            Entity newEntity = new Entity { Key = key, Value = value, next = next };
-            entity.next = newEntity;
-            _buckets[bucketIndex] = entity;
 
-        }
-        else
+        // CASE 1: Bucket is empty - just add
+        if (_buckets[bucketIndex] == null)
         {
-            entity = new Entity { Key = key, Value = value };
-            _buckets[bucketIndex] = entity;
+            _buckets[bucketIndex] = new Entity { Key = key, Value = value };
             _filledIndex++;
+            _count++;
+            return;
         }
+
+        // CASE 2: Bucket has entries - search for key
+        Entity? current = _buckets[bucketIndex];
+        Entity? previous = null;
+
+        while (current != null)
+        {
+            if (current.Key.Equals(key))
+            {
+                // FOUND: Update existing value
+                current.Value = value;
+                return; // Count doesn't change
+            }
+            previous = current;
+            current = current.next;
+        }
+
+        // CASE 3: Key not found - add new entry at end of chain
+        Entity newEntity = new Entity
+        {
+            Key = key,
+            Value = value,
+            next = null
+        };
+        previous!.next = newEntity; // Add at end of chain
         _count++;
     }
 
