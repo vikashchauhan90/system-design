@@ -8,11 +8,8 @@ public class SimpleHashTable : IEnumerable<KeyValuePair<string, byte[]?>>
     private const double LOAD_FACTOR_THRESHOLD = 0.75;
     private int _capacity;
     private int _count;
-    private int _filledIndex;
     private Entity?[] _buckets;
 
-    private bool Is75PercentFull => _filledIndex >= _buckets.Length * LOAD_FACTOR_THRESHOLD;
-    public bool IsEmpty => _filledIndex == -1;
     public int Capacity => _capacity;
     public int Count => _count;
     public SimpleHashTable(int capacity)
@@ -20,14 +17,12 @@ public class SimpleHashTable : IEnumerable<KeyValuePair<string, byte[]?>>
         _capacity = capacity > MINIMUM_CAPACITY ? capacity : MINIMUM_CAPACITY;
         _buckets = new Entity[_capacity];
         _count = 0;
-        _filledIndex = -1;
     }
     public SimpleHashTable()
     {
         _capacity = MINIMUM_CAPACITY;
         _buckets = new Entity[_capacity];
         _count = 0;
-        _filledIndex = -1;
     }
 
 
@@ -50,7 +45,7 @@ public class SimpleHashTable : IEnumerable<KeyValuePair<string, byte[]?>>
 
     public void Add(string key, byte[] value)
     {
-        if (Is75PercentFull)
+        if (Is75PercentFull())
         {
             Resized();
         }
@@ -62,7 +57,6 @@ public class SimpleHashTable : IEnumerable<KeyValuePair<string, byte[]?>>
         if (_buckets[bucketIndex] == null)
         {
             _buckets[bucketIndex] = new Entity { Key = key, Value = value };
-            _filledIndex++;
             _count++;
             return;
         }
@@ -110,12 +104,6 @@ public class SimpleHashTable : IEnumerable<KeyValuePair<string, byte[]?>>
                 if (previous == null)
                 {
                     _buckets[bucketIndex] = current.next;
-
-                    // bucket becomes empty
-                    if (_buckets[bucketIndex] == null)
-                    {
-                        _filledIndex--;
-                    }
 
                 }
                 else
@@ -172,6 +160,17 @@ public class SimpleHashTable : IEnumerable<KeyValuePair<string, byte[]?>>
             }
         }
         _buckets = newBuckets;
+    }
+
+    private bool Is75PercentFull()
+    {
+        var filledIndexes = _buckets.Count(x => x != null);
+        return filledIndexes >= _buckets.Length * LOAD_FACTOR_THRESHOLD;
+    }
+
+    public bool IsEmpty()
+    {
+        return _buckets.All(x => x == null);
     }
     IEnumerator IEnumerable.GetEnumerator()
     {
