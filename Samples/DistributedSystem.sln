@@ -42,6 +42,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DistributedSystem.Partition
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DistributedSystem.HashTable", "DistributedSystem.HashTable\DistributedSystem.HashTable.csproj", "{3B97F323-5563-48E2-87C7-DFAE49D26014}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DistributedSystem.LSMTree", "DistributedSystem.LSMTree\DistributedSystem.LSMTree.csproj", "{98C0C9F3-4988-4546-A0FE-E88D4F288CE3}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -100,6 +102,10 @@ Global
 		{3B97F323-5563-48E2-87C7-DFAE49D26014}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3B97F323-5563-48E2-87C7-DFAE49D26014}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{3B97F323-5563-48E2-87C7-DFAE49D26014}.Release|Any CPU.Build.0 = Release|Any CPU
+		{98C0C9F3-4988-4546-A0FE-E88D4F288CE3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{98C0C9F3-4988-4546-A0FE-E88D4F288CE3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{98C0C9F3-4988-4546-A0FE-E88D4F288CE3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{98C0C9F3-4988-4546-A0FE-E88D4F288CE3}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
