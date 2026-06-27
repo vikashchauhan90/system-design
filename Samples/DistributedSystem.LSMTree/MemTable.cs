@@ -1,6 +1,8 @@
-﻿namespace DistributedSystem.LSMTree;
+﻿using System.Text;
 
-public class MemTable
+namespace DistributedSystem.LSMTree;
+
+public sealed class MemTable
 {
     private readonly SortedDictionary<string, byte[]> _data;
     private readonly long _maxSize;
@@ -9,23 +11,26 @@ public class MemTable
     public bool IsFull => _currentSize >= _maxSize;
     public long SizeInBytes => _currentSize;
     public int Count => _data.Count;
+
     public MemTable(long maxSizeInBytes = 1024 * 1024) // 1MB default
     {
-        _data = new SortedDictionary<string, byte[]>();
+        _data = new SortedDictionary<string, byte[]>(StringComparer.Ordinal);
         _maxSize = maxSizeInBytes;
         _currentSize = 0;
     }
 
     public void Add(string key, byte[] value)
     {
-        // If key exists, subtract its old size
-        if (_data.TryGetValue(key, out var oldValue))
+        ArgumentException.ThrowIfNullOrWhiteSpace(key);
+        var normalizedValue = value ?? Array.Empty<byte>();
+
+        if (_data.TryGetValue(key, out var previousValue))
         {
-            _currentSize -= oldValue.Length;
+            _currentSize -= EstimateEntrySize(key, previousValue);
         }
 
-        _data[key] = value;
-        _currentSize += value.Length + key.Length * 2; // Approximate overhead
+        _data[key] = normalizedValue;
+        _currentSize += EstimateEntrySize(key, normalizedValue);
     }
 
     public byte[]? Get(string key)
@@ -46,5 +51,9 @@ public class MemTable
         _data.Clear();
         _currentSize = 0;
     }
-    
+
+    private static long EstimateEntrySize(string key, byte[] value)
+    {
+        return Encoding.UTF8.GetByteCount(key) + value.Length + 24;
+    }
 }

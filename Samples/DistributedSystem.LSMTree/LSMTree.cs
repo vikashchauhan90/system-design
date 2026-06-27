@@ -1,16 +1,15 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+﻿using System.Collections.Generic;
 
 namespace DistributedSystem.LSMTree;
 
-public class LSMTree : IDisposable
+public sealed class LSMTree : IDisposable
 {
     private readonly string _dataDirectory;
     private MemTable _memTable;
     private readonly List<SSTable> _sstables;
+    private readonly CommitLog _commitLog;
     private int _sstableCounter;
-    private readonly object _lock = new object();
+    private readonly object _lock = new();
     private readonly long _memTableMaxSize;
 
     public LSMTree(string dataDirectory, long memTableMaxSize = 1024 * 1024) // 1MB
@@ -19,45 +18,54 @@ public class LSMTree : IDisposable
         _memTableMaxSize = memTableMaxSize;
         _memTable = new MemTable(memTableMaxSize);
         _sstables = new List<SSTable>();
+        _commitLog = new CommitLog(Path.Combine(dataDirectory, "commit.log"));
         _sstableCounter = 0;
 
-        // Create directory if not exists
         Directory.CreateDirectory(dataDirectory);
-
-        // Load existing SSTables
         LoadExistingSSTables();
+        ReplayCommitLog();
     }
 
     private void LoadExistingSSTables()
     {
-        var files = Directory.GetFiles(_dataDirectory, "sstable_*.dat")
-                             .OrderBy(f => f)
-                             .ToList();
+        var directories = Directory.GetDirectories(_dataDirectory, "sstable_*")
+            .OrderBy(path => path, StringComparer.Ordinal)
+            .ToList();
 
-        foreach (var file in files)
+        foreach (var directory in directories)
         {
             try
             {
-                var sstable = new SSTable(file);
+                var sstable = new SSTable(directory);
                 _sstables.Add(sstable);
-                _sstableCounter = Math.Max(_sstableCounter,
-                    int.Parse(Path.GetFileNameWithoutExtension(file).Split('_')[1]) + 1);
+                var sequenceNumber = Path.GetFileName(directory).Split('_')[1];
+                _sstableCounter = Math.Max(_sstableCounter, int.Parse(sequenceNumber) + 1);
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error loading {file}: {ex.Message}");
+                Console.WriteLine($"Error loading SSTable '{directory}': {ex.Message}");
             }
+        }
+    }
+
+    private void ReplayCommitLog()
+    {
+        foreach (var entry in _commitLog.ReadEntries())
+        {
+            _memTable.Add(entry.Key, entry.Value);
         }
     }
 
     public void Add(string key, byte[] value)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(key);
+        var normalizedValue = value ?? Array.Empty<byte>();
+
         lock (_lock)
         {
-            // Add to memtable
-            _memTable.Add(key, value);
+            _commitLog.Append(key, normalizedValue);
+            _memTable.Add(key, normalizedValue);
 
-            // If memtable is full, flush to SSTable
             if (_memTable.IsFull)
             {
                 FlushMemTable();
@@ -67,22 +75,19 @@ public class LSMTree : IDisposable
 
     private void FlushMemTable()
     {
-        // Get all data from memtable
         var data = _memTable.GetAll().ToList();
-
         if (data.Count == 0)
+        {
             return;
+        }
 
-        // Create new SSTable
         var sstable = new SSTable(_dataDirectory, _sstableCounter++, data);
         _sstables.Add(sstable);
-
-        // Clear memtable
         _memTable.Clear();
+        _commitLog.Reset();
 
-        Console.WriteLine($"Flushed {data.Count} entries to {sstable.FilePath}");
+        Console.WriteLine($"Flushed {data.Count} entries to {sstable.DirectoryPath}");
 
-        // Optional: Trigger compaction if too many SSTables
         if (_sstables.Count > 5)
         {
             Compact();
@@ -91,22 +96,36 @@ public class LSMTree : IDisposable
 
     public byte[]? Get(string key)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(key);
+
         lock (_lock)
         {
-            // 1. Check memtable (latest data)
             var value = _memTable.Get(key);
-            if (value != null)
+            if (value is { Length: > 0 })
+            {
                 return value;
+            }
 
-            // 2. Check SSTables (newest first)
+            if (value is { Length: 0 })
+            {
+                return null;
+            }
+
             foreach (var sstable in _sstables.AsEnumerable().Reverse())
             {
                 value = sstable.Get(key);
-                if (value != null)
+                if (value is { Length: > 0 })
+                {
                     return value;
+                }
+
+                if (value is { Length: 0 })
+                {
+                    return null;
+                }
             }
 
-            return null; // Key not found
+            return null;
         }
     }
 
@@ -114,80 +133,79 @@ public class LSMTree : IDisposable
     {
         Console.WriteLine("Starting compaction...");
 
-        // Take oldest SSTables to merge
-        int mergeCount = Math.Min(4, _sstables.Count);
+        var mergeCount = Math.Min(4, _sstables.Count);
         var toMerge = _sstables.Take(mergeCount).ToList();
-
         if (toMerge.Count < 2)
+        {
             return;
+        }
 
-        // Collect all entries from SSTables being merged
-        var allEntries = new SortedDictionary<string, byte[]>();
+        var allEntries = new SortedDictionary<string, byte[]>(StringComparer.Ordinal);
         foreach (var sstable in toMerge)
         {
             foreach (var kvp in sstable.GetAll())
             {
-                // Latest write wins
                 allEntries[kvp.Key] = kvp.Value;
             }
         }
 
-        // Create new merged SSTable
         var newSSTable = new SSTable(_dataDirectory, _sstableCounter++, allEntries);
 
-        // Remove old SSTables
         foreach (var sstable in toMerge)
         {
             _sstables.Remove(sstable);
             sstable.Dispose();
-            File.Delete(sstable.FilePath);
+            if (Directory.Exists(sstable.DirectoryPath))
+            {
+                Directory.Delete(sstable.DirectoryPath, recursive: true);
+            }
         }
 
-        // Add new merged SSTable
-        _sstables.Insert(0, newSSTable); // Insert at beginning (oldest)
-
-        Console.WriteLine($"Compaction complete. Merged {mergeCount} files into {newSSTable.FilePath}. Entries: {newSSTable.EntryCount}");
+        _sstables.Add(newSSTable);
+        Console.WriteLine($"Compaction complete. Merged {mergeCount} files into {newSSTable.DirectoryPath}. Entries: {newSSTable.EntryCount}");
     }
 
     public void Delete(string key)
     {
-        // Use a special "null" value to mark deletion (tombstone)
         Add(key, Array.Empty<byte>());
     }
 
-
     public IEnumerable<KeyValuePair<string, byte[]>> Range(string startKey, string endKey)
     {
-        var result = new Dictionary<string, byte[]>();
+        ArgumentException.ThrowIfNullOrWhiteSpace(startKey);
+        ArgumentException.ThrowIfNullOrWhiteSpace(endKey);
 
-        // Get from memtable
+        var result = new SortedDictionary<string, byte[]>(StringComparer.Ordinal);
+
         foreach (var kvp in _memTable.GetAll()
-            .Where(x => string.Compare(x.Key, startKey) >= 0 &&
-                       string.Compare(x.Key, endKey) <= 0))
+                     .Where(x => string.Compare(x.Key, startKey, StringComparison.Ordinal) >= 0 &&
+                                 string.Compare(x.Key, endKey, StringComparison.Ordinal) <= 0))
         {
-            result[kvp.Key] = kvp.Value;
-        }
-
-        // Get from SSTables (newest first, overwriting older values)
-        foreach (var sstable in _sstables.AsEnumerable().Reverse())
-        {
-            foreach (var kvp in sstable.GetAll()
-                .Where(x => string.Compare(x.Key, startKey) >= 0 &&
-                           string.Compare(x.Key, endKey) <= 0))
+            if (kvp.Value.Length > 0)
             {
                 result[kvp.Key] = kvp.Value;
             }
         }
-        // Return sorted by key, excluding tombstones (empty values)
-        return result
-            .Where(x => x.Value.Length > 0)
-            .OrderBy(x => x.Key)
-            .Select(x => x);
+
+        foreach (var sstable in _sstables.AsEnumerable().Reverse())
+        {
+            foreach (var kvp in sstable.GetAll()
+                         .Where(x => string.Compare(x.Key, startKey, StringComparison.Ordinal) >= 0 &&
+                                     string.Compare(x.Key, endKey, StringComparison.Ordinal) <= 0))
+            {
+                if (kvp.Value.Length > 0)
+                {
+                    result[kvp.Key] = kvp.Value;
+                }
+            }
+        }
+
+        return result.Select(x => x);
     }
 
     public void PrintStats()
     {
-        Console.WriteLine($"=== LSM Tree Statistics ===");
+        Console.WriteLine("=== LSM Tree Statistics ===");
         Console.WriteLine($"MemTable Entries: {_memTable.Count}");
         Console.WriteLine($"MemTable Size: {_memTable.SizeInBytes} bytes");
         Console.WriteLine($"Number of SSTables: {_sstables.Count}");
@@ -197,22 +215,23 @@ public class LSMTree : IDisposable
         foreach (var sstable in _sstables)
         {
             totalEntries += sstable.EntryCount;
-            totalSize += new FileInfo(sstable.FilePath).Length;
+            totalSize += sstable.DataFileSizeBytes;
         }
+
         Console.WriteLine($"Total SSTable Entries: {totalEntries}");
         Console.WriteLine($"Total SSTable Size: {totalSize} bytes");
-        Console.WriteLine($"=============================");
+        Console.WriteLine("=============================");
     }
 
     public void Dispose()
     {
-        // Flush any remaining data
         FlushMemTable();
 
-        // Dispose all SSTables
         foreach (var sstable in _sstables)
         {
             sstable.Dispose();
         }
+
+        _commitLog.Dispose();
     }
 }
