@@ -3,7 +3,7 @@ using Timer = System.Timers.Timer;
 
 namespace DistributedSystem.Raft;
 
-public class RaftNode
+public class RaftNode : IDisposable
 {
     public string Id => _id;
 
@@ -11,6 +11,7 @@ public class RaftNode
     private readonly List<string> _peers;
     private readonly IRaftNetwork? _network;
     private readonly IPersistentStorage? _storage;
+    private readonly object _stateLock = new();
 
     public PersistentState Persistent { get; private set; } = new();
     public VolatileState Volatile { get; } = new();
@@ -18,6 +19,7 @@ public class RaftNode
 
     private readonly Timer _electionTimer;
     private Timer? _heartbeatTimer;
+    private bool _disposed;
 
     public RaftNode(string id, IEnumerable<string> peers, IRaftNetwork? network = null, IPersistentStorage? storage = null)
     {
@@ -26,17 +28,34 @@ public class RaftNode
         _network = network;
         _storage = storage;
 
-        // load persisted state
         if (_storage != null)
         {
-            var st = _storage.LoadAsync(_id).GetAwaiter().GetResult();
-            if (st != null) Persistent = st;
+            var storedState = _storage.LoadAsync(_id).GetAwaiter().GetResult();
+            Persistent = NormalizePersistedState(storedState);
         }
+
+        Persistent.Log ??= new List<LogEntry>();
+        Persistent.State = Persistent.State == default ? NodeState.Follower : Persistent.State;
+        State = Persistent.State;
 
         _electionTimer = new Timer(GetRandomElectionTimeout());
         _electionTimer.Elapsed += async (s, e) => await StartElectionAsync();
         _electionTimer.AutoReset = false;
         _electionTimer.Start();
+    }
+
+    public void Dispose()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _disposed = true;
+        _electionTimer.Stop();
+        _electionTimer.Dispose();
+        _heartbeatTimer?.Stop();
+        _heartbeatTimer?.Dispose();
     }
 
     private static double GetRandomElectionTimeout()
@@ -47,22 +66,77 @@ public class RaftNode
 
     private void ResetElectionTimer()
     {
-        _electionTimer.Interval = GetRandomElectionTimeout();
+        if (_disposed) return;
         _electionTimer.Stop();
+        _electionTimer.Interval = GetRandomElectionTimeout();
         _electionTimer.Start();
     }
 
     private void SavePersistent()
     {
-        if (_storage != null)
-            _ = _storage.SaveAsync(_id, Persistent);
+        if (_storage is null)
+        {
+            return;
+        }
+
+        try
+        {
+            _storage.SaveAsync(_id, Persistent).GetAwaiter().GetResult();
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Failed to persist Raft state for node {_id}: {ex.Message}");
+        }
+    }
+
+    private static PersistentState NormalizePersistedState(PersistentState? persistedState)
+    {
+        if (persistedState is null)
+        {
+            return new PersistentState();
+        }
+
+        persistedState.Log ??= new List<LogEntry>();
+        persistedState.State = persistedState.State == default ? NodeState.Follower : persistedState.State;
+        return persistedState;
+    }
+
+    private void SetState(NodeState newState)
+    {
+        lock (_stateLock)
+        {
+            State = newState;
+            Persistent.State = newState;
+        }
+
+        SavePersistent();
+    }
+
+    private bool IsLogUpToDate(long lastLogIndex, long lastLogTerm, RequestVoteRequest request)
+    {
+        var candidateLastTerm = request.LastLogTerm;
+        if (candidateLastTerm != lastLogTerm)
+        {
+            return candidateLastTerm > lastLogTerm;
+        }
+
+        return request.LastLogIndex >= lastLogIndex;
     }
 
     public async Task StartElectionAsync()
     {
-        State = NodeState.Candidate;
-        Persistent.CurrentTerm++;
-        Persistent.VotedFor = _id;
+        if (_disposed)
+        {
+            return;
+        }
+
+        lock (_stateLock)
+        {
+            State = NodeState.Candidate;
+            Persistent.State = NodeState.Candidate;
+            Persistent.CurrentTerm++;
+            Persistent.VotedFor = _id;
+        }
         SavePersistent();
 
         int votes = 1; // vote for self
@@ -71,24 +145,37 @@ public class RaftNode
 
         var tasks = _peers.Select(async peer =>
         {
-            if (_network == null) return false;
+            if (_network == null)
+            {
+                return false;
+            }
+
             var req = new RequestVoteRequest(Persistent.CurrentTerm, _id, lastLogIndex, lastLogTerm);
             try
             {
                 var res = await _network.SendRequestVoteAsync(peer, req);
-                if (res.VoteGranted) Interlocked.Increment(ref votes);
+                if (res.VoteGranted)
+                {
+                    Interlocked.Increment(ref votes);
+                }
+
                 if (res.Term > Persistent.CurrentTerm)
                 {
-                    Persistent.CurrentTerm = res.Term;
-                    Persistent.VotedFor = null;
+                    lock (_stateLock)
+                    {
+                        Persistent.CurrentTerm = res.Term;
+                        Persistent.VotedFor = null;
+                        Persistent.State = NodeState.Follower;
+                        State = NodeState.Follower;
+                    }
                     SavePersistent();
-                    State = NodeState.Follower;
                 }
             }
-            catch
+            catch (Exception ex)
             {
-                // network error -> ignore
+                Console.Error.WriteLine($"Vote request failed for peer {peer}: {ex.Message}");
             }
+
             return true;
         });
 
@@ -100,14 +187,19 @@ public class RaftNode
         }
         else
         {
-            // restart election timer
             ResetElectionTimer();
         }
     }
 
     private void BecomeLeader()
     {
-        State = NodeState.Leader;
+        lock (_stateLock)
+        {
+            State = NodeState.Leader;
+            Persistent.State = NodeState.Leader;
+        }
+        SavePersistent();
+
         foreach (var p in _peers)
         {
             Volatile.NextIndex[p] = Persistent.Log.Count + 1;
@@ -123,20 +215,32 @@ public class RaftNode
 
     private async void HeartbeatElapsed(object? s, ElapsedEventArgs e)
     {
-        if (State != NodeState.Leader) return;
+        if (State != NodeState.Leader)
+        {
+            return;
+        }
+
         await SendHeartbeatsAsync();
     }
 
     private async Task SendHeartbeatsAsync()
     {
-        if (_network == null) return;
+        if (_network == null)
+        {
+            return;
+        }
+
         var tasks = _peers.Select(peer => ReplicateToPeerAsync(peer));
         await Task.WhenAll(tasks);
     }
 
     public async Task AppendCommandAsync(string command)
     {
-        if (State != NodeState.Leader) throw new InvalidOperationException("not leader");
+        if (State != NodeState.Leader)
+        {
+            throw new InvalidOperationException("not leader");
+        }
+
         var index = Persistent.Log.Count + 1;
         var entry = new LogEntry(index, Persistent.CurrentTerm, command);
         Persistent.Append(entry);
@@ -147,8 +251,11 @@ public class RaftNode
 
     private async Task ReplicateToPeerAsync(string peer)
     {
-        if (_network == null) return;
-        // determine next index
+        if (_network == null)
+        {
+            return;
+        }
+
         var nextIndex = Volatile.NextIndex.ContainsKey(peer) ? Volatile.NextIndex[peer] : 1;
         var prevLogIndex = nextIndex - 1;
         var prevLogTerm = 0L;
@@ -174,28 +281,36 @@ public class RaftNode
             }
             else
             {
-                // back off nextIndex and retry on next heartbeat
                 if (Volatile.NextIndex.ContainsKey(peer) && Volatile.NextIndex[peer] > 1)
+                {
                     Volatile.NextIndex[peer] = Volatile.NextIndex[peer] - 1;
+                }
                 else
+                {
                     Volatile.NextIndex[peer] = Math.Max(1, nextIndex - 1);
+                }
             }
         }
-        catch
+        catch (Exception ex)
         {
-            // network error
+            Console.Error.WriteLine($"AppendEntries failed for peer {peer}: {ex.Message}");
         }
     }
 
     public AppendEntriesResponse HandleAppendEntries(AppendEntriesRequest req)
     {
         if (req.Term < Persistent.CurrentTerm)
+        {
             return new AppendEntriesResponse(Persistent.CurrentTerm, false);
+        }
 
-        // convert to follower
-        State = NodeState.Follower;
-        Persistent.CurrentTerm = req.Term;
-        Persistent.VotedFor = null;
+        lock (_stateLock)
+        {
+            State = NodeState.Follower;
+            Persistent.State = NodeState.Follower;
+            Persistent.CurrentTerm = req.Term;
+            Persistent.VotedFor = null;
+        }
         SavePersistent();
         ResetElectionTimer();
 
@@ -203,19 +318,18 @@ public class RaftNode
         {
             var entry = Persistent.Log.FirstOrDefault(e => e.Index == req.PrevLogIndex);
             if (entry == null || entry.Term != req.PrevLogTerm)
+            {
                 return new AppendEntriesResponse(Persistent.CurrentTerm, false);
+            }
         }
 
-        // append new entries (simple append; conflicts not fully handled)
         foreach (var e in req.Entries)
         {
-            // if an entry with same index exists, replace
             var existing = Persistent.Log.FirstOrDefault(x => x.Index == e.Index);
             if (existing != null)
             {
                 if (existing.Term != e.Term)
                 {
-                    // delete conflicting and append
                     Persistent.Log.RemoveAll(x => x.Index >= e.Index);
                     Persistent.Append(e);
                 }
@@ -227,7 +341,9 @@ public class RaftNode
         }
 
         if (req.LeaderCommit > Volatile.CommitIndex)
+        {
             Volatile.CommitIndex = Math.Min(req.LeaderCommit, Persistent.Log.Count);
+        }
 
         SavePersistent();
         return new AppendEntriesResponse(Persistent.CurrentTerm, true);
@@ -236,17 +352,32 @@ public class RaftNode
     public RequestVoteResponse HandleRequestVote(RequestVoteRequest req)
     {
         if (req.Term < Persistent.CurrentTerm)
+        {
             return new RequestVoteResponse(Persistent.CurrentTerm, false);
+        }
 
-        if ((Persistent.VotedFor == null || Persistent.VotedFor == req.CandidateId) /* && up-to-date check omitted */)
+        var lastLogIndex = Persistent.Log.LastOrDefault()?.Index ?? 0;
+        var lastLogTerm = Persistent.Log.LastOrDefault()?.Term ?? 0;
+
+        if (Persistent.VotedFor is not null && Persistent.VotedFor != req.CandidateId)
+        {
+            return new RequestVoteResponse(Persistent.CurrentTerm, false);
+        }
+
+        if (!IsLogUpToDate(lastLogIndex, lastLogTerm, req))
+        {
+            return new RequestVoteResponse(Persistent.CurrentTerm, false);
+        }
+
+        lock (_stateLock)
         {
             Persistent.VotedFor = req.CandidateId;
             Persistent.CurrentTerm = req.Term;
-            SavePersistent();
-            ResetElectionTimer();
-            return new RequestVoteResponse(Persistent.CurrentTerm, true);
+            Persistent.State = NodeState.Follower;
+            State = NodeState.Follower;
         }
-
-        return new RequestVoteResponse(Persistent.CurrentTerm, false);
+        SavePersistent();
+        ResetElectionTimer();
+        return new RequestVoteResponse(Persistent.CurrentTerm, true);
     }
 }
