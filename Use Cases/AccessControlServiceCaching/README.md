@@ -159,6 +159,23 @@ user:123 | order:789 | READ
 
 ---
 
+### 6.4 Partitioning Strategy
+
+This cache is best partitioned by the composite cache key:
+
+```text
+(userId, resourceId, action)
+```
+
+Recommended partitioning approaches:
+
+* **Hash-based partitioning** for even distribution and simple lookup
+* **Consistent hashing** if the cache cluster will scale or nodes may be added/removed
+
+This is a key-based partitioning workload, not a range-based workload, because the access pattern is point lookups for specific authorization decisions rather than ordered range scans.
+
+---
+
 ## 7. Storage Strategy
 
 Each product service selects storage based on cost and scale:
